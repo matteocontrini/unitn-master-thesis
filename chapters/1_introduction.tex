@@ -1,0 +1,119 @@
+\chapter{Introduction}
+\label{cha:intro}
+
+During the past decade, online video streaming usage has exploded. From gaming to entertainment, the market has seen strong growth in the past few years and is now valued at hundreds of billion dollars, with a steady growth expected for the years to come.\cite{cisco2019}
+
+% more than half of internnet traffic (BOLA)
+
+% https://www.precedenceresearch.com/video-streaming-market
+
+Live events streaming in particular is becoming increasingly relevant, in part because of the effect of the pandemic (many organizations started to live stream events and kept doing it), in part because of a more general shift from traditional broadcasting means like DVB-T (digital terrestrial), cable TV, and satellite to Internet streaming, typically over IP.
+
+Common situations where live streaming is used are public events, news, conferences, and most importantly sport events, where latency is especially relevant.
+
+In this section we will broadly cover video streaming terminology and technologies, with a focus on low-latency streaming and its challenges. We will also present related works that have tried to overcome these challenges, as well as propose a new approach to improve the live streaming user experience.
+
+\section{Video streaming architecture and latency}
+\label{sec:intro/architecture}
+
+Video streaming is typically divided in two main categories: on-demand and live. With Video on Demand (VoD) we typically mean video pre-recorded content that can be watched by the user at any time, while Live refers to events that are produced and transmitted as they happen.
+
+When considering the live streaming scenario, latency can become important, for example in sport events where spectators do not want to be too much behind the action. According to Wowza, a leading company in the streaming industry, a live stream can be considered low latency if it has a latency of less than 5 seconds.
+
+Latency can however be defined in many ways. A typical definition is the glass-to-glass (or end-to-end) latency, consisting of the time interval it takes for a video frame captured by a camera (the first "glass") to be shown on the screen of the user (the other "glass"). Other times, the latency is measured from the moment the video frame is ingested, i.e. fed as an input to the video encoding infrastructure.
+
+% add image https://www.wowza.com/wp-content/uploads/latency-continuum-2021-with-protocols-no-title-1110x540-1.webp
+
+When estimating the glass-to-glass latency of a live stream, one should take into consideration all the phases of a typical video architecture. In particular:
+
+\begin{itemize}
+    \item \textbf{Ingestion}: in this phase the source feed ("program") is made available to the back-end systems, usually by pushing a compressed feed from the client to the ingestion server through a protocol like RTMP or SRT/RIST.
+    \item \textbf{Encoding/transcoding}: the video stream is encoded in multiple different ways at the same time to produce a set of renditions, usually with different compression levels (resolution and bitrate). This step is often done with hardware encoders to maximize performance.
+    \item \textbf{Delivery/distribution}: the encoded streams need to be delivered to clients. In the case of streaming over HTTP this is done through Content Delivery Networks (CDN), whose role is to act as a caching layer between the client and the origin servers (\textit{edge cache}) and should thus be as close as possible to the final users.
+    \item \textbf{Playback}: video players download the video from the network, often by sequentially requesting individual video segments.
+\end{itemize}
+
+% TODO: CDN scaling and request racing/collapsing
+
+Each of these steps can introduce latency because of the presence of buffers. For example, encoders can start encoding a video chunk only when enough data is available. Similarly, players maintain a local buffer to better handle fluctuations in network bandwidth.
+
+\section{Unreliable networks}
+\label{sec:intro/networks}
+
+Video streaming is usually done over the public Internet, which of course can be an issue in all the situations where the connection has limited bandwidth or is unreliable.
+
+The metrics that are usually used to measure the quality of a channel are:
+
+\begin{itemize}
+    \item Bandwidth/throughput, measured in bits per second and their multiples (Mbps, Gbps, etc.);
+    \item Round Trip Time (RTT), measured as the time it takes for a packet to travel through the network to a destination and then come back to the source;
+    \item Packet loss, measure as the percentage of packets that are lost in a given time interval while being transmitted through the network.
+\end{itemize}
+
+Although modern access networks like fiber optics and 4G/5G can be quite reliable and provide a high throughput, Internet connectivity is still far from being perfect: as a matter of fact, very high capacity networks are still not dominant in most countries, Wi-Fi is often misconfigured or interfered, and mobile networks coverage can be problematic.
+
+% DESI, percentage of wifi over cable, tvs connected via wifi, aree bianche mobile bul
+
+A source of issues that is often overlooked is the Internet Service Provider network, whose backhauling infrastructure needs to be sized properly to avoid congestion. Interconnections with CDNs and other providers are also very important, as they can become congested during peak hours if capacity upgrades are not properly planned in advance.
+
+Unreliable networks make low-latency live video streaming a particularly challenging problem, and a number of video streaming technologies were developed to tackle this issue.
+
+\section{Video streaming technologies}
+\label{sec:intro/technologies}
+
+% defacto
+
+The vast majority of streaming protocols are nowadays based on the concept of \textbf{Adaptive Bitrate Streaming} (ABR). The idea is to have video content encoded in multiple renditions or variants, with different resolutions and bitrates. The set of video renditions and their parameters constitute a \textit{bitrate ladder}. Video players use different techniques to understand which rendition is the best for the current device and network conditions, and thus \textit{adapt} accordingly. The aim is to provide uninterrupted playback at the best possible quality.
+
+The two most common protocols for \textit{Adaptive Bitrate Streaming} are \textbf{Apple HLS}\footnote{HTTP Live Streaming} and \textbf{MPEG-DASH}\footnote{Dynamic Adaptive Streaming over HTTP}. They both work over HTTP and are conceptually similar. They require video content to be encoded in short video segments (no more than a few seconds) so that players can switch rendition at segment boundaries. In the past the protocols used different video container formats and weren't thus compatible, but they can now share video segment files thanks to the CMAF interoperability standard.
+
+% rfc cite
+
+Bitrate adaptation algorithms should find a tradeoff between reducing the probability of video freezes (rebuffering) and keeping a high video quality level, but neither HLS or MPEG-DASH mandate how players should choose the bitrate for the next segment. A common approach is to maintain a smoothed estimate of the network bandwidth or throughput, although alternative approaches based on buffer occupancy or even neural networks have been proposed and successfully implemented and deployed.\cite{bola}\cite{neural}
+
+\subsection{Live and low-latency live}
+\label{sec:intro/live}
+
+Live streaming is different from VoD because the whole video content is not available in advance and thus needs to be encoded "on the fly". Both HLS and DASH support live streams and the main difference from VoD is that new video segments are made available progressively, often with a sliding window of segments.
+
+Delivering live streams introduces a new category of challenges for video players, that need to find a trade-off between stream reliability and lower latency. A lower segment length and a smaller forward buffer on the client yields a lower latency but can interfere with rate adaption algorithms that require some time to react to network fluctuations, possibility causing excessive rebuffer events.
+
+Nonetheless, when Internet connectivity is reliable and performant standard HLS and DASH implementations still struggle to achieve low latencies, which is the reason why Low-Latency HLS and Low-Latency DASH were introduced. Both rely on the fact that segments are output in chunks by the encoder, so that players can start downloading and playing a segment even when it's not completely ready, reducing latency to a minimum.
+
+In this thesis, we will not focus on LL-HLS and LL-DASH, mainly because they, respectively, require HTTP/2 and HTTP/1.1 while we are focusing on HTTP/3, but the proposed work could theoretically be extended to those technologies as well.
+
+\section{A different live user experience}
+\label{sec:intro/experience}
+
+When a live video streaming setup struggles to adapt to network conditions, the most noticeable effect is rebuffering. Playback gets stuck while the player tries to complete the download of the next video segment and latency tends to grow. As a consequence, playback will lag behind the live event and users will perceive the action late, possibly by even tens of seconds.
+
+This kind of experience is different from other broadcasting mechanisms. For example, digital terrestrial or satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
+
+Adaptive streaming research has been focused on avoiding video stalls as much as possible, although in low-latency scenarios entirely avoiding rebuffering is a very hard task. Instead, there are methods that can be integrated in an adaptive streaming setup so that the linear TV experience that viewers are already used to can be replicated in video streaming as well. Although subjective, it would likely result in a better Quality of Experience (QoE).
+
+\section{Related works}
+\label{sec:intro/related}
+
+Several proposals have tried to provide innovative solutions to rebuffering events. In 2019, the authors of \cite{framediscarding} proposed an approach called \textit{frame discarding}. The idea was to exploit HTTP/2 streams to transmit each individual video frame independently. When network conditions become adverse, some carefully selected video frames are discarded and their download is aborted through the stream resetting feature of HTTP/2, saving bandwidth and at the same time preserving playback continuity.
+
+In 2021, Facebook presented a draft for \textit{Reliable (Unreliable) Streaming Protocol} (RUSH), which uses the QUIC protocol to provide a replacement for RTMP for video ingestion on unreliable networks. Video frames are transmitted in independent QUIC streams, providing a way to stop retransmissions if a video frame is not fully delivered on time.\cite{rush}
+
+In 2022, Twitch, the video streaming platform, submitted a draft RFC for \textit{Warp}, a new protocol for segmented media delivery over QUIC. \textit{Warp} transmits one video segment per QUIC stream and gives priority to newer video segments and to the audio track. Video segments that cannot be delivered in time are reset at the QUIC stream level to free bandwidth, an approach that Twitch calls \textit{segment truncation}. Warp can be used for video delivery in the browser thanks to \textit{WebTransport}, an abstraction of QUIC, although in the current draft it does not provide adaptive bitrate support.
+
+A new IETF working group, \textit{Media Over QUIC}, is evaluating how to consolidate video streaming protocols that work over QUIC in a single standardized solution.\footnote{https://datatracker.ietf.org/wg/moq/about/}
+
+\section{Proposed approach and results}
+\label{sec:intro/proposal}
+
+In this work, we first developed a testbed for experimenting with HTTP-based live streaming protocols. We then used the testbed to evaluate the performance of a modified version of HLS that implements a segment dropping approach over HTTP/3.
+
+HTTP/3 is a QUIC-based protocol that was standardized in 2022 and among its features allows to control the priority of responses sent by the server at the HTTP level. We used HTTP/3 priorities to give priority to HLS manifest files containing the stream metadata and, more importantly, to audio. Priorities, combined with the default Chromium\footnote{The Google-led open source project on which Google Chrome, Microsoft Edge and many other browsers are based.} underflow behavior make it possible to avoid stalls when the video buffer is empty for as long as three seconds.
+
+In order for the solution to work for longer periods of time and on browsers other than Chromium-based ones, we also implemented a mechanism to drop video segments that cannot be delivered in time and replace them with a placeholder/filler segment that is generated on the fly in the frontend thanks to \textit{WebCodecs API} and \textit{WebAssembly}.
+
+The experimental results show that video stalls and rebuffer events can be almost entirely eliminated with this solution, providing a smooth playback of the audio track when the video rate adaption algorithm is slow to react to the new network conditions.
+
+\section{Thesis structure}
+\label{sec:intro/structure}
+
+The remainder of the thesis is structured as follows.
