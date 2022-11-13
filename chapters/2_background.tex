@@ -136,7 +136,7 @@ Apart from the H.26x family of formats, Google released the royalty-free \textbf
 
 % TODO: sources
 
-The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies like Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{https://aomedia.org/membership/members/} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content like 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex codec implementations are often prohibitively expensive to be run in software, thus requiring hardware support, an effort that can require quite a few years.
+The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies like Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{\url{https://aomedia.org/membership/members/}} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content like 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex codec implementations are often prohibitively expensive to be run in software, thus requiring hardware support, an effort that can require quite a few years.
 
 % TODO: sources
 
@@ -156,7 +156,7 @@ As we have seen, H.264 is still the dominant video format in the industry. Since
 
 H.264 is based on the hybrid codec model we have introduced above. Frames are divided into 16x16 pixels \textbf{macroblocks} (MB), on which the prediction model is applied. Macroblocks can be split into partitions that can be as small as 4x4 pixels (not necessarily square), so that the same macroblock can reference different macroblocks possibly in different reference frames.
 
-In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51. Finally, for the entropy coding step, H.264 supports both the variable-length coding and arithmetic coding techniques.
+In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51 and is usually adjusted automatically by the encoded depending on the input configuration. Finally, for the entropy coding step, H.264 supports both the variable-length coding and arithmetic coding techniques.
 
 As not every device is capable of supporting all the features of the standard, H.264 includes the concept of profiles and levels. A \textbf{profile} defines which H.264 features the decoder must support in order to be able to decode the compressed video. Common profiles are: the baseline profile, which does not include support for B-slices\footnote{In H.264 the concept of I-frames, P-frames and B-frames is replaced by the slices equivalent. A slice is a subset of macroblocks contained in a video frame.} or CABAC\footnote{Context-aware Arithmetic Coding.}; the main profile, which supports both B-slices and CABAC; the high profile, which includes additional optimizations like adaptive selection of the block size for the transform step. The \textbf{level} instead specifies an upper limit on the frame size, decoding rate and memory required to decode the a video.
 
@@ -176,8 +176,18 @@ Finally, an important part of H.264 is the syntax of the coded bitstream. The H.
 	\label{fig:h264_scope}
 \end{figure}
 
-\section{Audio compression}
+\section{Digital audio and compression}
 \label{sec:bg/audio}
+
+Digital audio is usually represented through the \textbf{Pulse Code Modulation} (PCM) method, which is characterized by two main parameters: the \textbf{sample rate}, defining how frequently the sound level was measured when captured from the analog domain, and \textbf{bit depth}, which refers to the number of bits used to store a sample.
+
+Although uncompressed PCM audio is more tractable than video, since it is much lighter (a stereo audio track with 44.1 kHz sample rate and 16-bit samples requires "only" 1.4 Mbps), audio is typically highly compressible since human sound perception is limited. Audio coding formats such as \textbf{MP3} and \textbf{AAC} are based on perceptual coding, since they tend to discard sound information that would otherwise be inaudible and can achieve excellent quality with savings of up to 90\%.
+
+% sources
+
+\textbf{AAC} is nowadays the most used audio format in streaming scenarios, and is supported by virtually every device.\cite{bitmovin} AAC comes in multiple variants, with \textbf{Low Complexity} (AAC-LC) being the most common since it is widely supported and provides good compression ratios and quality. Other common versions are the ones of the \textbf{High Efficiency} (HE) family, which are optimized for low-bitrate applications.
+
+In the AAC bitstream, audio samples are organized in packets that contain a fixed number of samples, typically 1024. To reduce compression artifacts, AAC uses a modified version of the DCT transform that works with overlapping samples. This means that in practice, for each AAC packet encoded or decoded another packet with the same number of samples is required. For this reason, AAC encoders add at least 1024 samples of silence before the first actual audio sample, a technique called \textbf{priming}. Since this delay could introduce synchronization issues when audio is combined with video, decoders need to detect priming and correctly take into consideration the encoder delay.\cite{aacpriming}
 
 \section{Container formats}
 \label{sec:bg/containers}
