@@ -123,21 +123,64 @@ The structure of a GOP can be summarized as a string sequence, like \texttt{IBBP
 	\label{fig:codec_gop2}
 \end{figure}
 
-\subsection{Popular video codecs}
+\subsection{Popular video coding formats}
 \label{sec:bg/compression/codecs}
 
+The dominant video coding standard is currently \textbf{H.264}, sometimes referred to as \textit{Advanced Video Coding} (AVC) or \textit{MPEG-4 Part 10}, developed by a joint team of the ITU (Video Coding Experts Group) and ISO (Moving Picture Experts Group, or \textbf{MPEG}). H.264 was first standardized in 2003, nevertheless it is estimated that H.264 is still used today by more than 80\% of the companies in the industry, thanks to its good performance (both in terms of compression and encoding/decoding efficiency) and the accessible royalties structure.\cite{bitmovin}
 
-% H.264
-% only the decoding formats
-% annex B
-% profiles/levels
+It is worth noting that the H.264 standard only defines the format and syntax of the H.264 bitstream and how to decode it, but it does not specify how to actually encode a video. This is why the term \textit{codec} should be only used to refer to the actual software implementations of H.264, which typically include both an encoder and a decoder.
 
-\subsection{Container formats}
+The successor of H.264, first published in 2013, is \textbf{H.265}, also named \textit{High Efficiency Video Codec} (HEVC) or \textit{MPEG-H Part 2}, delivering 25\% to 50\% better compression at the same bitrate when compared to H.264. It is especially suitable for high-resolution content like 4K UHD, but it struggled to reach wide adoption because of the complex and expensive royalties structure that slowed down hardware support.\cite{hevcroyalties}
+
+Apart from the H.26x family of formats, Google released the royalty-free \textbf{VP8} in 2008, followed by \textbf{VP9} in 2012. Thanks to Google controlling a large fraction of the browsers market share and the YouTube streaming platform, VP9 became a popular alternative to H.264 often delivering better video compression ratios with comparable quality.
+
+% TODO: sources
+
+The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies like Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{https://aomedia.org/membership/members/} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content like 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex codec implementations are often prohibitively expensive to be run in software, thus requiring hardware support, an effort that can require quite a few years.
+
+% TODO: sources
+
+\subsubsection{H.264}
+\label{sec:bg/compression/codecs/h264}
+
+\begin{figure}
+	\centering
+	
+	\includegraphics[width=0.8\textwidth]{res/h264_scope.png}
+	
+	\caption{The scope of the H.264 standard.}
+	\label{fig:h264_scope}
+\end{figure}
+
+As we have seen, H.264 is still the dominant video format in the industry. Since the standard only covers the decoding part of the codec, as shown in Figure \ref{fig:h264_scope}, many codec implementations have been released, achieving different compression results. One of the most popular H.264 encoders is \texttt{x264}, which is open-source and software-based, typically scoring as the best speed/quality trade-off in H.264 codecs comparisons.\cite{msu2021}
+
+H.264 is based on the hybrid codec model we have introduced above. Frames are divided into 16x16 pixels \textbf{macroblocks} (MB), on which the prediction model is applied. Macroblocks can be split into partitions that can be as small as 4x4 pixels (not necessarily square), so that the same macroblock can reference different macroblocks possibly in different reference frames.
+
+In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51. Finally, for the entropy coding step, H.264 supports both the variable-length coding and arithmetic coding techniques.
+
+As not every device is capable of supporting all the features of the standard, H.264 includes the concept of profiles and levels. A \textbf{profile} defines which H.264 features the decoder must support in order to be able to decode the compressed video. Common profiles are: the baseline profile, which does not include support for B-slices\footnote{In H.264 the concept of I-frames, P-frames and B-frames is replaced by the slices equivalent. A slice is a subset of macroblocks contained in a video frame.} or CABAC\footnote{Context-aware Arithmetic Coding.}; the main profile, which supports both B-slices and CABAC; the high profile, which includes additional optimizations like adaptive selection of the block size for the transform step. The \textbf{level} instead specifies an upper limit on the frame size, decoding rate and memory required to decode the a video.
+
+Finally, an important part of H.264 is the syntax of the coded bitstream. The H.264 data is organized in a sequence of packets known as \textbf{Network Abstraction Layer Units} (NAL units or \textbf{NALUs}). Since the units can be of varying length, there should be a way to distinguish when a unit ends and the next one begins. There are mainly two approaches to solve this problem:
+
+\begin{itemize}
+    \item Transporting NAL units into \textbf{packets}, which could be network packets or a structure defined by the \textbf{container format}, as we will see in the following sections.
+    \item Treating the bitstream as a \textbf{byte stream}. In this case a \textit{start code}, a 3-byte sequence acting as a synchronization marker, is inserted before each NAL unit so that the decoder can identify the units boundaries. This byte stream format is defined by the \textit{Annex B} of the standard, which is the reason why this format is very often referred to as \texttt{annexb}.
+\end{itemize}
+
+\begin{figure}
+	\centering
+	
+	\includegraphics[width=0.9\textwidth]{res/h264_nalu.png}
+	
+	\caption{H.264 bitstream structure and encapsulation alternatives.}
+	\label{fig:h264_scope}
+\end{figure}
 
 \section{Audio compression}
 \label{sec:bg/audio}
 
-
+\section{Container formats}
+\label{sec:bg/containers}
 
 \section{A typical live streaming architecture}
 \label{sec:bg/compression}
@@ -145,4 +188,16 @@ The structure of a GOP can be summarized as a string sequence, like \texttt{IBBP
 \section{Adaptive bitrate technologies}
 \label{sec:bg/technologies}
 
+\section{Hypertext Transfer Protocol (HTTP) evolution}
+\label{sec:bg/http}
 
+\subsection{HTTP/1.1}
+\label{sec:bg/http1}
+
+\subsection{HTTP/2}
+\label{sec:bg/http2}
+
+\subsection{HTTP/3}
+\label{sec:bg/http3}
+
+\section{Network emulation tools}
