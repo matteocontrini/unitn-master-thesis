@@ -130,7 +130,7 @@ The dominant video coding standard is currently \textbf{H.264}, sometimes referr
 
 It is worth noting that the H.264 standard only defines the format and syntax of the H.264 bitstream and how to decode it, but it does not specify how to actually encode a video. This is why the term \textit{codec} should be only used to refer to the actual software implementations of H.264, which typically include both an encoder and a decoder.
 
-The successor of H.264, first published in 2013, is \textbf{H.265}, also named \textit{High Efficiency Video Codec} (HEVC) or \textit{MPEG-H Part 2}, delivering 25\% to 50\% better compression at the same bitrate when compared to H.264. It is especially suitable for high-resolution content like 4K UHD, but it struggled to reach wide adoption because of the complex and expensive royalties structure that slowed down hardware support.\cite{hevcroyalties}
+The successor of H.264, first published in 2013, is \textbf{H.265}, also named \textit{High Efficiency Video Coding} (HEVC) or \textit{MPEG-H Part 2}, delivering 25\% to 50\% better compression at the same bitrate when compared to H.264. It is especially suitable for high-resolution content like 4K UHD, but it struggled to reach wide adoption because of the complex and expensive royalties structure that slowed down hardware support.\cite{hevcroyalties}
 
 Apart from the H.26x family of formats, Google released the royalty-free \textbf{VP8} in 2008, followed by \textbf{VP9} in 2012. Thanks to Google controlling a large fraction of the browsers market share and the YouTube streaming platform, VP9 became a popular alternative to H.264 often delivering better video compression ratios with comparable quality.
 
@@ -181,9 +181,7 @@ Finally, an important part of H.264 is the syntax of the coded bitstream. The H.
 
 Digital audio is usually represented through the \textbf{Pulse Code Modulation} (PCM) method, which is characterized by two main parameters: the \textbf{sample rate}, defining how frequently the sound level was measured when captured from the analog domain, and \textbf{bit depth}, which refers to the number of bits used to store a sample.
 
-Although uncompressed PCM audio is more tractable than video, since it is much lighter (a stereo audio track with 44.1 kHz sample rate and 16-bit samples requires "only" 1.4 Mbps), audio is typically highly compressible since human sound perception is limited. Audio coding formats such as \textbf{MP3} and \textbf{AAC} are based on perceptual coding, since they tend to discard sound information that would otherwise be inaudible and can achieve excellent quality with savings of up to 90\%.
-
-% sources
+Although uncompressed PCM audio is more tractable than video, since it is much lighter (a stereo audio track with 44.1 kHz sample rate and 16-bit samples requires "only" 1.4 Mbps), audio is typically highly compressible since human sound perception is limited. Audio coding formats such as \textbf{MP3} and \textbf{AAC} are based on perceptual coding, since they tend to discard sound information that would otherwise be inaudible and can achieve excellent quality with savings of up to 90\%.\cite{aac}
 
 \textbf{AAC} is nowadays the most used audio format in streaming scenarios, and is supported by virtually every device.\cite{bitmovin} AAC comes in multiple variants, with \textbf{Low Complexity} (AAC-LC) being the most common since it is widely supported and provides good compression ratios and quality. Other common versions are the ones of the \textbf{High Efficiency} (HE) family, which are optimized for low-bitrate applications.
 
@@ -192,8 +190,55 @@ In the AAC bitstream, audio samples are organized in packets that contain a fixe
 \section{Container formats}
 \label{sec:bg/containers}
 
+Bitstreams produced by video and audio encoders often do not contain enough information to allow video player to actually play the video or audio file. For example, in H.264 the timing information is optional and without it the decoder does not know how to assign timestamps to individual video frames, or even the duration of the video.\cite{h264itu} In AAC, the raw frames do not contain information like the sample rate or even the variant of AAC used to encode the samples.\cite{aac}
+
+\textbf{Container formats} solve this problem by wrapping the bitstreams in a structure that is common between different coding formats. Container formats also allow the grouping of multiple video, audio and subtitle tracks, an operation known as \textbf{muxing} (from \textit{multiplexing}) and performed by \textbf{muxers}.
+
+Two popular container formats that are used in the context of video streaming are \textbf{MPEG-2 Transport Stream} and \textbf{MP4}.
+
+\subsection{MPEG-2 Transport Stream}
+\label{sec:bg/containers/mpeg2ts}
+
+MPEG-2 Transport Stream (or \textbf{MPEG-2 TS}), defined by the MPEG-2 Part 1 standard, is a container format designed for digital television broadcasting systems. For this reason, it includes features like error correction and synchronization, in order to protect from degraded transmission channels.
+
+A single MPEG-2 Transport Stream can transport multiple programs, for example multiple TV channels. Each program can consist of multiple video and audio streams, known as \textbf{elementary streams}. The coded data for each elementary stream is packetized into PES (Packetized Elementary Stream) packets, each having a fixed length of 188 bytes. The 188 bytes include headers (which transport data like timing information), which is the reason why Transport Stream often has a non-negligible overhead.\cite{mpeg2ts}
+
+% terrible, rewrite
+% https://tsduck.io/download/docs/mpegts-introduction.pdf
+
+An H.264 bitstream muxed in an MPEG-2 stream must be in the Annex B format with start codes.
+
+\subsection{MP4 and fragmented MP4}
+\label{sec:bg/containers/mp4}
+
+MP4 is a container file format based on the \textbf{ISO Base Media File Format} (ISOBMFF). It was extended from Apple's QuickTime File Format (\texttt{.mov}) and first published in 2001 as MPEG-4 Part 14.\footnote{The actual box structure is defined in MPEG-4 Part 12 (ISOBMFF).}\cite{mpeg4part12}
+
+In the ISOBMFF format, the video and audio bitstreams, such as an H.264-compressed video, are stored as tracks and organized in a \textbf{box structure}. The MP4 format is capable of storing metadata like the video duration and per-frame display and decoding timestamps, dealing with issues like synchronization between tracks and random access (\textit{seeking}) of the media file.
+
+% Video and audio frames are usually interleaved, although it is possible to generate "flat" MP4 files where tracks are organized sequentially.
+
+Some ISOBMFF box (or atom) types that are particularly relevant are:
+
+\begin{itemize}
+    \item \texttt{ftyp} (\textit{file type}), which includes some general information about the file type, e.g. the version of the MP4 specification the file is compliant against. If missing, the file becomes a QuickTime file.
+    \item \texttt{moov} (\textit{movie header}), containing metadata about the tracks, such as the creation time, the duration of the track, the resolution, bitrate, tables that allow players to quickly find the part of the file where a specific frame or timestamp can be found, etc.
+    \item \texttt{mdat} (\textit{movie data}), containing the actual audio and video samples.
+\end{itemize}
+
+An H.264 bitstream muxed in an MP4 container does not need start codes and therefore must not be in the Annex B format, since MP4 is not a "stream" format. H.264 bistreams in MP4 are stored in a format known as \texttt{avcC} where NAL units are prepended with their length.
+
+A typical structure of an MP4 file consists of a \texttt{ftyp} box followed by a \texttt{moov} box (containing tracks metadata), and finally the actual data stored in a \texttt{mdat} box. The \texttt{moov} box is sometimes placed at the end of the file, since the data contained in it is often available only at the end of the encoding process.
+
+% TODO: mp4dump example
+
+For some use cases, like adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \textbf{fMP4}. In this format, the sequence is divided in fragments that can be transmitted and played independently. The structure of a fMP4 file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all the fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, like the fragment index or the timestamp, and the \texttt{mdat} contains the video or audio samples of the fragment (typically a few seconds of content).
+
+% TODO: mp4dump example
+
 \section{A typical live streaming architecture}
 \label{sec:bg/compression}
+
+
 
 \section{Adaptive bitrate technologies}
 \label{sec:bg/technologies}
