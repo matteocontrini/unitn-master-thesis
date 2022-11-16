@@ -9,6 +9,10 @@ Text.
 
 Video is known to be one of the heaviest types of content to be stored and transmitted. Since treating uncompressed video is unfeasible, video compression or video coding formats have been developed and standardized over the years, with multiple implementations (\textit{codecs}) being released. The objective of video codecs is to limit the output data rate, measured in bits per second, while trying to maintain a perceptually good video quality.
 
+The process of compressing a video is known as \textbf{encoding} and is performed by an encoder. When a video file is already encoded in a video format and needs to be encoded in another one, we often use the term \textbf{transcoding}.
+
+In this section we will go through the main techniques that are used by most video coding standards.
+
 \subsection{RGB vs Y'CbCr}
 \label{sec:bg/compression/ycbcr}
 
@@ -185,21 +189,21 @@ Although uncompressed PCM audio is more tractable than video, since it is much l
 
 \textbf{AAC} is nowadays the most used audio format in streaming scenarios, and is supported by virtually every device.\cite{bitmovin} AAC comes in multiple variants, with \textbf{Low Complexity} (AAC-LC) being the most common since it is widely supported and provides good compression ratios and quality. Other common versions are the ones of the \textbf{High Efficiency} (HE) family, which are optimized for low-bitrate applications.
 
-In the AAC bitstream, audio samples are organized in packets that contain a fixed number of samples, typically 1024. To reduce compression artifacts, AAC uses a modified version of the DCT transform that works with overlapping samples. This means that in practice, for each AAC packet encoded or decoded another packet with the same number of samples is required. For this reason, AAC encoders add at least 1024 samples of silence before the first actual audio sample, a technique called \textbf{priming}. Since this delay could introduce synchronization issues when audio is combined with video, decoders need to detect priming and correctly take into consideration the encoder delay.\cite{aacpriming}
+In the AAC bitstream, audio samples are organized in packets that contain a fixed number of samples, typically 1024. To reduce compression artifacts, AAC uses a modified version of the DCT transform that works with overlapping samples. This means that in practice, for each AAC packet encoded or decoded another packet with the same number of samples is required. For this reason, AAC encoders add at least 1024 samples of silence before the first actual audio sample, a technique called \textbf{priming}. Since this delay could introduce synchronization issues when audio is combined with video, decoders need to detect priming and correctly take into account the encoder delay.\cite{aacpriming}
 
 \section{Container formats}
 \label{sec:bg/containers}
 
-Bitstreams produced by video and audio encoders often do not contain enough information to allow video player to actually play the video or audio file. For example, in H.264 the timing information is optional and without it the decoder does not know how to assign timestamps to individual video frames, or even the duration of the video.\cite{h264itu} In AAC, the raw frames do not contain information like the sample rate or even the variant of AAC used to encode the samples.\cite{aac}
+Bitstreams produced by video and audio encoders often do not contain enough information to allow video players to actually play the video or audio file. For example, in H.264 the timing information is optional and without it the decoder does not know how to assign timestamps to individual video frames, or even determine the duration of the video.\cite{h264itu} In AAC, the raw frames do not contain information like the sample rate or even the variant of AAC used to encode the samples.\cite{aac}
 
-\textbf{Container formats} solve this problem by wrapping the bitstreams in a structure that is common between different coding formats. Container formats also allow the grouping of multiple video, audio and subtitle tracks, an operation known as \textbf{muxing} (from \textit{multiplexing}) and performed by \textbf{muxers}.
+\textbf{Container formats} solve this problem by wrapping the bitstreams in a structure that is common between different coding formats. Container formats also allow the grouping of multiple video, audio, and subtitle tracks, an operation known as \textbf{muxing} (from \textit{multiplexing}) and performed by \textbf{muxers}. The process of extracting tracks from a container format is instead known as \textbf{demuxing}.
 
-Two popular container formats that are used in the context of video streaming are \textbf{MPEG-2 Transport Stream} and \textbf{MP4}.
+Two popular container formats used in the context of video streaming are \textbf{MPEG-2 Transport Stream} and \textbf{MP4}.
 
 \subsection{MPEG-2 Transport Stream}
 \label{sec:bg/containers/mpeg2ts}
 
-MPEG-2 Transport Stream (or \textbf{MPEG-2 TS}), defined by the MPEG-2 Part 1 standard, is a container format designed for digital television broadcasting systems. For this reason, it includes features like error correction and synchronization, in order to protect from degraded transmission channels.
+MPEG-2 Transport Stream (or \textbf{MPEG-2 TS}), defined by the MPEG-2 Part 1 standard, is a container format originally designed for digital television broadcasting systems. For this reason, it includes features like error correction and synchronization, providing protection from degraded transmission channels.
 
 A single MPEG-2 Transport Stream can transport multiple programs, for example multiple TV channels. Each program can consist of multiple video and audio streams, known as \textbf{elementary streams}. The coded data for each elementary stream is packetized into PES (Packetized Elementary Stream) packets, each having a fixed length of 188 bytes. The 188 bytes include headers (which transport data like timing information), which is the reason why Transport Stream often has a non-negligible overhead.\cite{mpeg2ts}
 
@@ -213,35 +217,107 @@ An H.264 bitstream muxed in an MPEG-2 stream must be in the Annex B format with 
 
 MP4 is a container file format based on the \textbf{ISO Base Media File Format} (ISOBMFF). It was extended from Apple's QuickTime File Format (\texttt{.mov}) and first published in 2001 as MPEG-4 Part 14.\footnote{The actual box structure is defined in MPEG-4 Part 12 (ISOBMFF).}\cite{mpeg4part12}
 
-In the ISOBMFF format, the video and audio bitstreams, such as an H.264-compressed video, are stored as tracks and organized in a \textbf{box structure}. The MP4 format is capable of storing metadata like the video duration and per-frame display and decoding timestamps, dealing with issues like synchronization between tracks and random access (\textit{seeking}) of the media file.
+In the \textbf{ISOBMFF} format, the video and audio bitstreams, such as an H.264-compressed video, are stored as tracks and organized in a \textbf{box structure}. The MP4 format is capable of storing metadata like the video duration and per-frame display and decoding timestamps, dealing with issues like synchronization between tracks and random access (\textit{seeking}) of the media file.
 
 % Video and audio frames are usually interleaved, although it is possible to generate "flat" MP4 files where tracks are organized sequentially.
 
 Some ISOBMFF box (or atom) types that are particularly relevant are:
 
 \begin{itemize}
-    \item \texttt{ftyp} (\textit{file type}), which includes some general information about the file type, e.g. the version of the MP4 specification the file is compliant against. If missing, the file becomes a QuickTime file.
-    \item \texttt{moov} (\textit{movie header}), containing metadata about the tracks, such as the creation time, the duration of the track, the resolution, bitrate, tables that allow players to quickly find the part of the file where a specific frame or timestamp can be found, etc.
+    \item \texttt{ftyp} (\textit{file type}), which includes some general information about the file type, e.g. the version of the MP4 (or QuickTime) specification the file is compliant against.
+    \item \texttt{moov} (\textit{movie header}), containing metadata about the tracks, such as the creation time, the duration, the resolution, bitrate, the tables that allow players to quickly find the part of the file where a specific frame or timestamp can be found, etc.
     \item \texttt{mdat} (\textit{movie data}), containing the actual audio and video samples.
 \end{itemize}
 
-An H.264 bitstream muxed in an MP4 container does not need start codes and therefore must not be in the Annex B format, since MP4 is not a "stream" format. H.264 bistreams in MP4 are stored in a format known as \texttt{avcC} where NAL units are prepended with their length.
+An H.264 bitstream muxed in an MP4 container does not need start codes and therefore must not be in the Annex B format. H.264 bistreams in MP4 files are stored in a format known as \texttt{avcC}, where H.264 NAL units are prepended with their length.
 
-A typical structure of an MP4 file consists of a \texttt{ftyp} box followed by a \texttt{moov} box (containing tracks metadata), and finally the actual data stored in a \texttt{mdat} box. The \texttt{moov} box is sometimes placed at the end of the file, since the data contained in it is often available only at the end of the encoding process.
+A typical structure of an MP4 file consists of a \texttt{ftyp} box followed by a \texttt{moov} box (containing the tracks metadata), and finally the actual data stored in a \texttt{mdat} box. The \texttt{moov} box is sometimes placed at the end of the file, since the data contained in it is often available only at the end of the encoding process.
 
 % TODO: mp4dump example
 
-For some use cases, like adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \textbf{fMP4}. In this format, the sequence is divided in fragments that can be transmitted and played independently. The structure of a fMP4 file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all the fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, like the fragment index or the timestamp, and the \texttt{mdat} contains the video or audio samples of the fragment (typically a few seconds of content).
+For some use cases, like adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \textbf{fMP4}. In this format, the sequence is divided in fragments that can be transmitted and played independently. The structure of a fMP4 file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all the fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, like the fragment index and the timestamp, and the \texttt{mdat} contains the video or audio samples for a single fragment (typically a few seconds of content).
 
 % TODO: mp4dump example
 
 \section{A typical live streaming architecture}
 \label{sec:bg/compression}
 
+In a live streaming architecture, we can generally distinguish three main parts: \textbf{ingestion}, \textbf{transcoding and packaging}, and \textbf{distribution}.
 
+\textbf{Ingestion} refers to the process of making the input feed available to the transcoder server for processing. Often, this means having a client push the stream through an ingestion protocol such as \textbf{Real Time Messaging Protocol} (RTMP). In some cases, a more suitable approach is a pull-based one, where it is the backend system's responsibility to "pull" the video and audio streams from another system and pass them onto the pipeline.
+
+Usually, the input feed is a high-bitrate/high-quality stream that is not suitable for live streaming. In particular, when the setup is based on adaptive bitrate streaming (ABR), which is the de facto standard for live streaming, the video stream must be \textbf{transcoded} in multiple video renditions with different quality levels and encoding parameters. The video and audio files produced by this step need to be in a coding and container format that is compatible with the adaptive bitrate technology that was chosen. For example, MPEG-DASH (see Section \ref{sec:bg/technologies/dash}) requires streams to be muxed in a fragmented MP4 container.
+
+Ideally, for the best performance, the video files produced in this step should take into account how ABR technologies work. For example, the bitrate of the individual renditions should not oscillate too much so that bitrate adaption algorithms can take the average bitrate as a reference value. Also, since segments should be roughly of the same size a fixed GOP size should be used when encoding.\cite{ozer}
+
+Additionally, some adaptive streaming technologies require the video fragments (or segments) to be stored in physically separated files. The task of splitting video and audio files into smaller segments is done by \textbf{packagers}, which can be static or dynamic: with \textbf{static packaging} the individual video fragment files are actually created and stored on disk, while with \textbf{dynamic packaging} they are generated on the fly. The packager, which is specific for the ABR technology, also creates \textbf{manifest or playlist files} that act as an index for the streams.
+
+The segmented video and audio tracks, together with the manifest files, can finally be delivered to clients. Most of the time, this is done through the Hypertext Transfer Protocol (HTTP). Using HTTP makes it easy for streaming platforms to scale, thanks to the widespread availability of \textbf{Content Delivery Networks} (CDN) and their global distribution networks. One of the important advantages of relying on CDNs is the possibility to cache video segments at the edge of the networks, as close as possible to the final users, therefore reducing latency and probability of congestion.
+
+% architecture diagram
+
+% TODO: probably merge this section with the below one and be more precise with terminology. See NMD report.
+
+% TODO: packager or segmenter
+
+% advantages of HTTP: no UDP, firewalls, scalability, https
 
 \section{Adaptive bitrate technologies}
-\label{sec:bg/technologies}
+\label{sec:bg/abr}
+
+\subsection{Apple HTTP Live Streaming (HLS)}
+\label{sec:bg/abr/hls}
+
+HTTP Live Streaming (HLS) is an HTTP-based adaptive streaming protocol designed by Apple. First introduced in 2009 and later standardized as RFC 9216, it is estimated to be the most popular streaming protocol with over 73\% companies using it.\cite{rfc8216}\cite{bitmovin} The reason for that is not only the fact that HLS is the only possible option to implement live and on-demand streaming on Apple mobile devices and browsers, but also the simplicity of the protocol.
+
+HLS uses the \textbf{extended M3U format} (\texttt{.m3u8} extension) to define a set of playlists, containing information such as the list of streams or the list of segments for a particular stream. In particular, a \textbf{master playlist} provides a set of variant streams\footnote{In the HLS RFC, the terms \textit{variant} and \textit{rendition} have different meanings. We will use the term \textit{variant} in this section to adhere to the RFC, while using the two terms interchangeably in the rest of the thesis.}, each of which is a different version of the same content, usually differing by the bitrate and other encoding parameters. Players download the master playlist at the beginning of the playback session and use the information contained in it to adapt to network conditions by switching between variants. An example of a master playlist is shown in Figure X.
+
+% TODO: master playlist example
+
+When players want to play a specific variant, they load the \textbf{media playlist} corresponding to the variant. A media playlist must specify the maximum duration of segments in seconds, followed by a list of \textbf{media segments}, characterized by their duration and URI (relative or absolute). In the case of an on-demand content, the media playlist must contain the full list of segments that make the video or audio file, while in the case of live streams the playlist may include only a sliding window of segments. An example of a media playlist is shown in Figure Y.
+
+Media segments in HLS can be muxed in the MPEG-2 TS format (\texttt{.ts} files) or fragmented MP4 (\texttt{.mp4} or \texttt{.m4s} files), while the supported video codecs are H.264 and H.265. When using \texttt{fMP4} as a container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes through the \texttt{\#EXT-X-MAP} tag.
+
+In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams which are often taken as best practices in the industry when producing content for adaptive bitrate streaming.
+
+The authoring specification provides a set of recommendations to ensure compatibility with HLS implementation that can be found on Apple devices, including:
+
+\begin{itemize}
+    \item a table with a possible set of variants with their bitrate and frame rate (a \textit{bitrate ladder}), for both H.264 and H.265, plus a recommendation to adjust them according to the specific use case;
+    \item an indication that the peak bitrate should be no more than 200\% of the average bitrate, although it is often recommended to make the bitrate as constant as possible;\cite{ozer}
+    \item a recommendation for a segment duration of 6 seconds, although 4 seconds or lower are common values in practice.\cite{ozer}
+\end{itemize}
+
+HLS also includes support for encryption, ads, trick play (scrubbing and fast forward), subtitles, and multiple audio tracks.
+
+% TODO: low-latency HLS
+
+\subsection{MPEG Dynamic Adaptive Streaming over HTTP (DASH)}
+\label{sec:bg/technologies/dash}
+
+% TODO
+
+\subsection{Common Media Application Format (CMAF)}
+\label{sec:bg/technologies/cmaf}
+
+Before Apple introduced support for \texttt{fMP4} in 2016, a common issue for video platforms was that supporting both HLS and DASH required to maintain two copies of the same content, one in MPEG-2 TS format and the other one in \texttt{fMP4}.
+
+This led to the proposal and standardization of the \textbf{Common Media Application Format} (CMAF), a common specification that defines how media should be packaged and segmented for delivery. Fragmented MP4 is a CMAF-compatible format and since it is supported by both HLS and DASH it can lead to significant savings. Video platforms can in fact produce and store a single set of video segment files which can be delivered to all devices.\cite{cmaf}
+
+\subsection{Media Source Extensions (MSE)}
+\label{sec:bg/technologies/mse}
+
+One of the main medium through which users watch video streams is web browsers. Apple includes native support for its HLS protocol in Safari, which is pre-installed on all Apple devices and is also the only engine that can be used on iOS. Other browser typically do not include support neither for HLS or DASH, but instead support the \textbf{Media Source Extensions} (MSE) API, through which JavaScript libraries can implement support for HLS and DASH.\cite{mse}
+
+MSE is a set of APIs that abstract the implementation of media playback in the browser. MSE exposes types and methods that allow the client-side code to push video and audio data for playback.
+
+More in detail, MSE defines the \texttt{MediaSource} type as a source of media data for the \texttt{<video>} or \texttt{<audio>} HTML5 media elements, to which a \texttt{MediaSource} is attached. The client code interacts with the \texttt{MediaSource} to push new data while media elements fetch the data from the \texttt{MediaSource}.
+
+\texttt{MediaSource} instances expose methods to attach a set of \texttt{SourceBuffer} objects, which represent individual media tracks like a video or audio streams. When new media data is available, such as a new video segments, the client calls the \texttt{appendBuffer()} method on the corresponding \texttt{SourceBuffer}, providing the new data for the track to the browser. The bytes of data must of course conform to the format set when creating the \texttt{SourceBuffer}, which must be supported by the browser. Most of the time this means ISOBMFF (\texttt{fMP4}) or WebM as container formats, while codecs often depend on the browser build and platform.
+
+Libraries that implement HLS or DASH must take care of parsing the manifest files, downloading the segments, implementing rate adaption algorithms, potentially transmuxing from MPEG-2 TS to fragmented MP4 (such as with HLS), appending segment data to the source buffers while leaving the MP4 demuxing and stream decoding tasks to the browser.
+
+In practice, this means that there can be many implementations of HLS and DASH, all relying on Media Source Extensions underneath. For HLS, a popular implementation is \texttt{HLS.js}\footnote{\url{https://github.com/video-dev/hls.js/}}, while for DASH the official reference implementation is \texttt{dash.js}\footnote{\url{https://github.com/Dash-Industry-Forum/dash.js/}}. Several other JavaScript players include support for HLS and DASH, such as \texttt{Video.js}, \texttt{Shaka Player}, \texttt{THEOPlayer}, and \texttt{JW Player}, some of which are open source while other are commercial.
 
 \section{Hypertext Transfer Protocol (HTTP) evolution}
 \label{sec:bg/http}
