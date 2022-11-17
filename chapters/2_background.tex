@@ -322,13 +322,130 @@ In practice, this means that there can be many implementations of HLS and DASH, 
 \section{Hypertext Transfer Protocol (HTTP) evolution}
 \label{sec:bg/http}
 
+When browsing the Web, we use an application layer protocol known as \textbf{Hypertext Transfer Protocol} or \textbf{HTTP}. In addition to being used for transferring HTML web pages and related files, we have seen that HTTP can be used by apdative streaming technologies to deliver video and audio segments to the client.
+
+In this section, we will briefly go through three important versions of HTTP, their limitations, peculiarities, and how they are currently exploited by HLS and DASH for video streaming applications.
+
 \subsection{HTTP/1.1}
 \label{sec:bg/http1}
+
+For a long time, the dominant HTTP version has been HTTP/1.1, first published in 1997.\cite{http1.1} It is based on the Transmission Control Protocol (TCP), the connection-oriented reliable transport layer protocol.
+
+To send an HTTP request, a client should open a TCP connection with the server. It will then transmit the request line, followed by a list of headers, an empty line and optionally a payload or message body. An example of a HTTP/1.1 GET request is shown in Figure X.
+
+% TODO: http request and response
+
+Once the server has received the request, it will do its processing and then start sending the response on the same TCP connection. The response consists of a status line, a list of headers, and optionally a message body.
+
+For secure communication, HTTPS allows to use \textbf{Transport Layer Security} (TLS) to create a secure communication channel over TCP. The HTTP/1.1 request is then transmitted on top of the TLS session, with the same format seen above.
+
+When keep-alive is enabled (persistent connections), the same connection can be reused to send multiple HTTP requests, avoiding the overhead of establishing a new TCP connection and TLS session. HTTP/1.1 also supports request pipelining, meaning that multiple requests can be sent on the same TCP connection before receiving the responses, although it is rarely used because not all server implementations support it properly.
+
+The main limitation of HTTP/1.1 is however that it does not support responses multiplexing, meaning that responses must be transmitted sequentially. This causes a problem known as \textbf{HTTP head-of-line blocking}, where the current request blocks the following requests. Browsers try to workaround this issue by opening multiple TCP connections to the same web server when loading web pages, up to a (configurable) limit.\footnote{For example, Firefox uses 6 as a default connection limit, but the value can be changed through the \texttt{network.http.max-persistent-connections-per-server} preference} 
 
 \subsection{HTTP/2}
 \label{sec:bg/http2}
 
+HTTP/2, published as a Proposed Standard in 2015 as RFC 7540, was an attempt to solve the main issues of HTTP/1.1, most notably the head-of-line blocking problem. The aim of HTTP/2 was at the same time to use less network resources while reducing the perception of latency.\cite{http2}
+
+In HTTP/2, clients establish a \textbf{single TCP connection} with the server. To allow request and response \textbf{multiplexing}, the protocol introduces a binary framing format in which requests and responses, which maintain the same HTTP semantics as in HTTP/1.1, are split into smaller units, the frames. Frames can be interleaved, allowing multiple requests and responses to be transmitted in parallel. In order to identify to which request a frame belongs to, the concept of \textbf{streams} was introduced. Streams can be seen as virtual connections that are very light to create and generally correspond to single HTTP requests. Streams can also be reset, with the effect of immediately stopping the transmission of data frames.
+
+An important feature of HTTP/2 is \textbf{stream prioritization}. Since multiple streams can co-exist on the same TCP connection, there was the need for a mechanism to make better decisions on which stream goes first or is given priority. HTTP/2 allows clients to assign a \textbf{weight} between 1 and 256 to each stream, where a higher number means higher priority. In addition, clients can specify that a stream is dependent on another stream through its ID, effectively creating a \textbf{dependency tree}. The structure of the tree, and therefore the order in which requests are responded, is defined by the dependency relationships, while the division of resources between a set of "children" streams is determined by their weights.
+
+The dependency tree approach of HTTP/2 is very flexible and allows clients to implement different \textbf{prioritization strategies}, with widely different performance results. In \cite{http2pri}, Wijnants et al. examined the behavior of the main browsers to find out which prioritization scheme they implemented. It turns out that only Mozilla Firefox chose to adopt a complex tree-based strategy. Google Chrome implements a much simpler sequential FCFS approach based on dynamic weights (giving more weight to more requests deemed more important according to heuristics), Microsoft Edge (legacy) uses a naive round-robin strategy with no weights at all, while Safari follows a weighted round-robin scheme. Surprisingly, experimental results showed superior performance when the simple strategy implemented by Chrome is used.
+
+% TODO: diagrams
+% https://speeder.edm.uhasselt.be/www18/files/h2priorities_mwijnants_www2018.pdf
+% https://speeder.edm.uhasselt.be/www18/files/h2priorities_mwijnants_www2018_presentation.pdf
+% https://speeder.edm.uhasselt.be/www18/
+% https://quic.edm.uhasselt.be/files/fosdem.pdf
+% https://youtu.be/nH4iRpFnf1c?t=440
+
+In HTTP/2, the use of HTTPS is mandatory, making the protocol more secure by design. HTTP/2 also achieves better performance by compressing headers, thanks to the \texttt{HPACK} compression algorithm. Finally, a feature known as \textbf{HTTP/2 Server Push} allows the server to push additional unsolicited content in response to HTTP requests, theoretically reducing the need of additional round-trip times to request resources.
+
+While all these features make sense, in practice HTTP/2 did not manage to provide the expected performance improvements, for multiple reasons:
+
+\begin{itemize}
+    \item The Server Push feature never really took off, with virtually no CDN having support for Server Push. Additionally, in 2022 Google removed Server Push support from Google Chrome citing extremely low usage, almost no gain in performance, and complexities in browser implementation.\footnote{\url{https://developer.chrome.com/blog/removing-push/}}
+    \item Stream prioritization was found to be inconsistently implemented by clients and servers, with a significant number of large CDNs apparently ignoring prioritization.\footnote{\url{https://github.com/andydavies/http2-prioritization-issues}}. This led to the prioritization scheme of HTTP/2 being deprecated and replaced by a new mechanism at the same time that HTTP/3 came out.
+    \item The sequential prioritization strategy leads to the same HTTP head-of-line blocking issue seen in HTTP/1.1, worsened by the fact that only a single TCP connection is used.
+    \item The use of a single TCP connection leads to another problem known as \textbf{TCP head-of-line blocking}, where the bottleneck is not the HTTP design but TCP itself. In fact, while HTTP/2 multiplexes requests in multiple streams, at the transport layer TCP only sees a single opaque byte stream. As a consequence, TCP retransmissions delay the transmission of all streams and not just the one affected by packet loss. Additionally, TCP congestion control may reduce the throughput of the connection in case of congestion, affecting all the requests, while in HTTP/1.1 it is less likely that all the connections are affected at the same time.
+\end{itemize}
+
 \subsection{HTTP/3}
 \label{sec:bg/http3}
 
+To overcome the limitations of TCP-based approaches, HTTP/3 is based on a new transport protocol called QUIC, which is built on top of the lightweight UDP. While HTTP/3 by itself does not introduce new features, the fact that it is based on a new protocol like QUIC allowed to rethink how a transport layer protocol should work from the ground up. QUIC was published as a Proposed Standard with RFC 9000 in May 2021 with HTTP/3 following as RFC 9114 in June 2022, after a few years of work.\cite{http3}
+
+In particular, these are the main difference between HTTP/2 and HTTP/3 based stacks:
+
+\begin{itemize}
+    \item Since QUIC is based on UDP, TCP features such as connection establishment, flow control, congestion control, and retransmissions are now implemented by QUIC;
+    \item \textbf{TLS v1.3} is tightly integrated with QUIC, making security features like encrypted communication mandatory while allowing innovative features like 1-RTT handshakes or 0-RTT session resumption to be implemented seamlessly, further improving performance;
+    \item Unlike TCP, QUIC provides a seamless \textbf{connection migration} feature that allows reuse of connections when network connection changes;
+    \item \textbf{Stream multiplexing} is moved "down" from the application layer to QUIC. HTTP/3 takes advantage of QUIC streams to provide request multiplexing. HTTP/3 clients or servers can cancel HTTP requests by \textbf{resetting} the underlying QUIC stream;
+    \item HTTP/2 \textbf{stream prioritization} is replaced by a simpler priority mechanism, implemented at the HTTP/3 level. QUIC does not have stream prioritization.
+\end{itemize}
+
+% TODO: stack diagrams https://github.com/rmarx/h3-protocol-stack/blob/main/README.md
+
+The \textbf{head-of-line blocking} issue caused by TCP in HTTP/2 is not present in HTTP/3 because streams are now a concept of the transport layer. Unlike TCP, in fact, QUIC does not see a single byte stream but multiple streams that can be treated independently (with respect to retransmissions, for example). However, if the scheduling strategy implemented by the server is sequential, there could still be head-of-line blocking because the slow transmission of a stream would block the other ones. The multiplexing scheduler depends on the server implementation and is often round-robin, according to the experiments run by Marx et al.\cite{quicdiversity}
+
+The prioritization scheme used by HTTP/3 was introduced in RFC 9218, published together with HTTP/3, with the title of \textit{Extensible Prioritization Scheme for HTTP}. As the title suggests, the new mechanism is actually not HTTP/3-specific and is defined for both HTTP/2 and HTTP/3. Clients that implement RFC 9218 can communicate their preferences on how the server should prioritize responses in two ways:\cite{rfc9218}
+
+\begin{itemize}
+    \item Through an HTTP header called \texttt{Priority}, where the priority for the request is specified.
+    \item Through a \texttt{PRIORITY\_UPDATE} frame, that makes it possible to reprioritize requests after they have been sent. With HTTP/3, priority update frames are transmitted over a unidirectional QUIC stream dedicated to control commands.
+\end{itemize}
+
+Requests priorities in RFC 9218 are defined by two parameters:
+
+\begin{itemize}
+    \item the \textbf{urgency} parameter (\texttt{u}), an integer value ranging from 0 to 7 in descending order of priority, with a default value of 3;
+    \item the \textbf{incremental} parameter (\texttt{i}), indicating whether an HTTP response can be processed incrementally by the client, and therefore if it can benefit from being received concurrently. For example, the download of a standard JPEG image file would not benefit from being transmitted incrementally since the JPEG decoder usually needs the whole image to start decoding the picture. On the other hand, a CSS file could benefit from being delivered even partially if the browser is capable of interpreting the CSS rules before the whole file is downloaded. The default value for the incremental parameter is 0 (\texttt{false}).
+\end{itemize}
+
+When using the \texttt{Priority} header, the urgency and incremental parameters can be specified as a string in the following format: \texttt{u=3, i=0}.
+
+Since HTTP/3 uses the same transport layer port as previous HTTP versions, namely port 443 for HTTPS, but with a different transport layer protocol (TCP vs QUIC), a protocol negotiation mechanism is needed. This is done through the HTTP \texttt{Alt-Svc} response header, through which servers can specify if and on which port alternative services such as HTTP/3 are available. Browsers usually send the first connection through TCP-based HTTP. If the response contains an \texttt{Alt-Svc} header indicating that HTTP/3 is available, they close the TCP connection and switch to QUIC on subsequent requests. An example of a header advertising HTTP/3 on port 443 is \verb|Alt-Svc: h3=":443"; ma=2592000|, where \texttt{ma} (max-age) corresponds to the number of seconds for which the alternative service configuration should be considered valid (defaults to 24 hours).
+
+\subsubsection{Server implementations}
+\label{sec:bg/http3/servers}
+
+Even before the QUIC specification was published, several open-source libraries that implement QUIC were born. Some of the most notable ones are Cloudflare's \texttt{quiche}, Fastly's \texttt{quicly}, Google's \texttt{quiche}, Meta's \texttt{mvfst}, and LiteSpeed's \texttt{lsquic}.\cite{quicdiversity}
+
+Some of these libraries also provide support for HTTP/3, although they are not HTTP web servers that can be used out of the box. Popular web servers like \textbf{Apache} and \textbf{nginx} do not currently support HTTP/3. Specifically, nginx support for HTTP/3 was delayed because OpenSSL, the TLS implementation used by nginx, still has to implement the required interfaces for QUIC. nginx is therefore planning to switch to another TLS library and expects HTTP/3 support to be finalized by the end of 2022.\footnote{\url{https://www.nginx.com/blog/our-roadmap-quic-http-3-support-nginx/}}
+
+Some lesser known web servers that include HTTP/3 support are Fastly's h2o (based on \texttt{quicly}), LiteSpeed Web Server (based on \texttt{lsquic}), and Caddy (based on \texttt{quic-go}).
+
+\subsubsection{Browser support}
+\label{sec:bg/http3/browsers}
+
+It is estimated that around 75\% of the market share of browsers is capable of browsing with HTTP/3. Google Chrome added support for HTTP/3 in 2020, Mozilla Firefox in 2021, while Apple's Safari still considers HTTP/3 support experimental at the time of writing.\footnote{\url{https://caniuse.com/http3}} According to Cloudflare Radar, HTTP/3 traffic accounts for around 28\% of global web traffic, with HTTP/2 at 65\% and HTTP/1.x at 7\%.\footnote{\url{https://radar.cloudflare.com/}}
+
+\subsubsection{Debugging tools}
+\label{sec:bg/http3/tools}
+
+When conducting research or developing applications that use HTTP/3 features, it is often useful to dig deeper into the raw HTTP/3 or QUIC frames. There are several tools that make this possible:
+
+\begin{itemize}
+    \item \textbf{Wireshark}, the popular network protocol analyzer, which includes support for QUIC and HTTP/3, although still very basic and missing most features;\footnote{\url{https://gitlab.com/wireshark/wireshark/-/issues/16761}}
+    \item \texttt{qlog}, a project by the IETF QUIC Working Group aimed at introducing a common logging format for QUIC. Both client and server implementations can support \texttt{qlog}, providing a way to capture and export network traces with QUIC-related events in a common format. \texttt{qlog} captures could then be parsed by \texttt{qlog} analyzers;\footnote{\url{https://github.com/quicwg/qlog}}
+    \item Chrome's \textbf{NetLog dump}, a detailed capture of network activity from the perspective of the browser. It can be generated by browsing to \texttt{chrome://net-export}. The format is proprietary, but there are visualization tools that support the NetLog format;\footnote{\url{https://www.chromium.org/for-testers/providing-network-details/}}
+    \item \texttt{qvis}, developed by the authors of \cite{quicdiversity}, a suite of tools that analyze \texttt{qlog}, NetLog dumps or Wireshark captures to provide advanced insights into QUIC traces. The suite includes many visualization tools such as sequence diagrams, congestion control plots, multiplexing and packetization visualizations, and other detailed stats.\footnote{\url{https://qvis.quictools.info/}}
+\end{itemize}
+
 \section{Network emulation tools}
+\label{sec:bg/network}
+
+% TODO
+
+\subsection{Mininet}
+\label{sec:bg/network/mininet}
+
+% TODO
+
+\subsection{ComNetsEmu}
+\label{sec:bg/network/comnetsemu}
+
+% TODO
