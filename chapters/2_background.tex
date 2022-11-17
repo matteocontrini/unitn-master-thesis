@@ -158,11 +158,11 @@ The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018)
 
 As we have seen, H.264 is still the dominant video format in the industry. Since the standard only covers the decoding part of the codec, as shown in Figure \ref{fig:h264_scope}, many codec implementations have been released, achieving different compression results. One of the most popular H.264 encoders is \texttt{x264}, which is open source and software-based, typically scoring as the best speed/quality trade-off in H.264 codec comparisons.\cite{msu2021}
 
-H.264 is based on the hybrid codec model we have introduced above. Frames are divided into 16x16 pixels \textbf{macroblocks} (MB), on which the prediction model is applied. Macroblocks can be split into partitions that can be as small as 4x4 pixels (not necessarily square), so that the same macroblock can reference different macroblocks possibly in different reference frames.
+H.264 is based on the hybrid codec model we have introduced earlier. Frames are divided into 16x16 pixels \textbf{macroblocks} (MB), on which the prediction model is applied. Macroblocks can be split into partitions that can be as small as 4x4 pixels (not necessarily square), so that the same macroblock can reference different macroblocks possibly in different reference frames.
 
-In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51 and is usually adjusted automatically by the encoded depending on the input configuration. Finally, for the entropy coding step, H.264 supports both the variable-length coding and arithmetic coding techniques.
+In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51 and is usually adjusted automatically by the encoded depending on the input configuration. Finally, for the entropy coding step, H.264 supports both variable-length coding and arithmetic coding techniques.
 
-As not every device is capable of supporting all features of the standard, H.264 includes the concept of profiles and levels. A \textbf{profile} defines which H.264 features the decoder must support in order to be able to decode the compressed video. Common profiles are: the baseline profile, which does not include support for B-slices\footnote{In H.264 the concept of I-frames, P-frames and B-frames is replaced by the slices equivalent. A slice is a subset of macroblocks contained in a video frame.} or CABAC\footnote{Context-aware Arithmetic Coding.}; the main profile, which supports both B-slices and CABAC; the high profile, which includes additional optimizations such as adaptive selection of the block size for the transform step. The \textbf{level} instead specifies an upper limit on the frame size, the decoding rate, and the memory required to decode the video.
+As not every device is capable of supporting all features of the standard, H.264 includes the concept of profiles and levels. A \textbf{profile} defines which H.264 features the decoder must support in order to be able to decode the compressed video. Common profiles are: the baseline profile, which does not include support for B-slices\footnote{In H.264 the concept of I-frames, P-frames and B-frames is replaced by the slices equivalent. A slice is a subset of macroblocks contained in a video frame.} or CABAC\footnote{Context-aware Arithmetic Coding.}; the main profile, which supports both B-slices and CABAC; the high profile, which includes additional optimizations such as adaptive selection of the block size for the transform step. The \textbf{level} instead specifies an upper limit on frame size, decoding rate, and memory required to decode the video.
 
 Finally, an important part of H.264 is the syntax of the coded bitstream. The H.264 data is organized in a sequence of packets known as \textbf{Network Abstraction Layer Units} (NAL units or \textbf{NALUs}). Since units can be of varying length, there should be a way to distinguish when a unit ends and the next one begins. There are mainly two approaches to solve this problem:
 
@@ -270,15 +270,48 @@ The segmented video and audio tracks, together with the manifest files, can fina
 
 HTTP Live Streaming (HLS) is an HTTP-based adaptive streaming protocol designed by Apple. First introduced in 2009 and later standardized as RFC 9216, it is estimated to be the most popular streaming protocol with more than 73\% companies using it.\cite{rfc8216}\cite{bitmovin} The reason for that is not only the fact that HLS is the only possible option to implement live and on demand streaming on Apple mobile devices and browsers, but also the simplicity of the protocol.
 
-HLS uses the \textbf{extended M3U format} (\texttt{.m3u8} extension) to define a set of playlists that contain information such as the list of streams or the list of segments for a particular stream. In particular, a \textbf{master playlist} provides a set of variant streams\footnote{In the HLS RFC, the terms \textit{variant} and \textit{rendition} have different meanings. We will use the term \textit{variant} in this section to adhere to the RFC, while using the two terms interchangeably in the rest of the thesis.}, each of which is a different version of the same content, usually differing by bitrate and other encoding parameters. Players download the master playlist at the beginning of the playback session and use the information contained in it to adapt to network conditions by switching between variants. An example of a master playlist is shown in Figure X.
+HLS uses the \textbf{extended M3U format} (\texttt{.m3u8} extension) to define a set of playlists that contain information such as the list of streams or the list of segments for a particular stream. In particular, a \textbf{master playlist} provides a set of variant streams\footnote{In the HLS RFC, the terms \textit{variant} and \textit{rendition} have different meanings. We will use the term \textit{variant} in this section to adhere to the RFC, while using the two terms interchangeably in the rest of the thesis.}, each of which is a different version of the same content, usually differing by bitrate and other encoding parameters. Players download the master playlist at the beginning of the playback session and use the information contained in it to adapt to network conditions by switching between variants. An example of a master playlist is shown in Figure \ref{fig:hls_master}.
 
-% TODO: master playlist example
+\begin{figure}[h]
+    \centering
+    \begin{minted}[frame=single]{text}
+#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=1280000,AVERAGE-BANDWIDTH=1000000
+low.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=2560000,AVERAGE-BANDWIDTH=2000000
+mid.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=7680000,AVERAGE-BANDWIDTH=6000000
+high.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=65000,CODECS="mp4a.40.5"
+audio-only.m3u8
+    \end{minted}
+	\caption{Example of a HLS master playlist with variants. The first three variants contain both video and audio, while the fourth variant is audio-only. The first variant, corresponding to the \texttt{low.m3u8} media playlist, is defined with an average bitrate of 1000 kbps and a peak bitrate of 1280 kbps.}
+	\label{fig:hls_master}
+\end{figure}
 
-When players want to play a specific variant, they load the \textbf{media playlist} corresponding to the variant. A media playlist must specify the maximum duration of segments in seconds, followed by a list of \textbf{media segments}, characterized by their duration and URI (relative or absolute). In the case of on-demand content, the media playlist must contain the full list of segments that make up the video or audio file, while in the case of live streams, the playlist may include only a sliding window of segments. An example of a media playlist is shown in Figure Y.
+When players want to play a specific variant, they load the \textbf{media playlist} corresponding to the variant. A media playlist must specify the maximum duration of segments in seconds, followed by a list of \textbf{media segments}, characterized by their duration and URI (relative or absolute). In the case of on-demand content, the media playlist must contain the full list of segments that make up the video or audio file, while in the case of live streams, the playlist may include only a sliding window of segments. An example of a media playlist is shown in Figure \ref{fig:hls_media}.
 
-Media segments in HLS can be muxed in the MPEG-2 TS format (\texttt{.ts} files) or fragmented MP4 (\texttt{.mp4} or \texttt{.m4s} files), while the supported video codecs are H.264 and H.265. When using \texttt{fMP4} as a container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes through the \texttt{\#EXT-X-MAP} tag.
+\begin{figure}[h]
+    \centering
+    \begin{minted}[frame=single]{text}
+#EXTM3U
+#EXT-X-TARGETDURATION:6
+#EXT-X-VERSION:3
+#EXTINF:6,
+segment-1.ts
+#EXTINF:6,
+segment-2.ts
+#EXTINF:3,
+segment-3.ts
+#EXT-X-ENDLIST
+    \end{minted}
+	\caption{Example of a simple HLS VOD media playlist with three segments and a segment target duration of 6 seconds.}
+	\label{fig:hls_media}
+\end{figure}
 
-In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams which are often taken as best practices in the industry when producing content for adaptive bitrate streaming.
+HLS media segments can be muxed in MPEG-2 TS format (\texttt{.ts} files) or fragmented MP4 format (\texttt{.mp4} or \texttt{.m4s} files), while supported video codecs are H.264 and H.265. When using \texttt{fMP4} as a container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes through the \texttt{\#EXT-X-MAP} tag.
+
+In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams, which are often taken as best practices in the industry when producing content for adaptive bitrate streaming.
 
 The authoring specification provides a set of recommendations to ensure compatibility with HLS implementation that can be found on Apple devices, including:
 
@@ -326,22 +359,39 @@ When browsing the Web, we use an application layer protocol known as \textbf{Hyp
 
 In this section, we will briefly go through three important versions of HTTP, their limitations, peculiarities, and how they are currently exploited by HLS and DASH for video streaming applications.
 
+% TODO: mention LL-HLS and LL-DASH somewhere?
+
 \subsection{HTTP/1.1}
 \label{sec:bg/http1}
 
-For a long time, the dominant HTTP version has been HTTP/1.1, first published in 1997.\cite{http1.1} It is based on the Transmission Control Protocol (TCP), the connection-oriented reliable transport layer protocol.
+For a long time, the dominant HTTP version has been HTTP/1.1, first published in 1997.\cite{http1.1} It is based on the Transmission Control Protocol (TCP), the reliable connection-oriented transport layer protocol.
 
-To send an HTTP request, a client should open a TCP connection with the server. It will then transmit the request line, followed by a list of headers, an empty line and optionally a payload or message body. An example of a HTTP/1.1 GET request is shown in Figure X.
+To send an HTTP request, a client should open a TCP connection with the server. It will then transmit the request line, followed by a list of headers, an empty line, and optionally a payload or message body. The following is an example of an HTTP/1.1 \texttt{GET} request to the URL \texttt{http://example.com/index.html}.
 
-% TODO: http request and response
+\begin{minted}[frame=single]{http}
+GET /index.html HTTP/1.1
+Host: example.com
+User-Agent: curl
+Accept: */*
+\end{minted}
 
-Once the server has received the request, it will do its processing and then start sending the response on the same TCP connection. The response consists of a status line, a list of headers, and optionally a message body.
+Once the server has received the request, it will do its processing and then start sending the response on the same TCP connection. The response consists of a status line, a list of headers, and optionally a message body, as in the following example.
 
-For secure communication, HTTPS allows to use \textbf{Transport Layer Security} (TLS) to create a secure communication channel over TCP. The HTTP/1.1 request is then transmitted on top of the TLS session, with the same format seen above.
+\begin{minted}[frame=single]{http}
+HTTP/1.1 200 OK
+Date: Thu, 22 Dec 2022 08:00:00 GMT
+Content-Type: text/html; charset=UTF-8
+
+<html>
+<head>
+...omitted...
+\end{minted}
+
+For encrypted communication, HTTPS uses \textbf{Transport Layer Security} (TLS) to create a secure communication channel over TCP. The HTTP/1.1 request is then transmitted on top of the encrypted TLS session.
 
 When keep-alive is enabled (persistent connections), the same connection can be reused to send multiple HTTP requests, avoiding the overhead of establishing a new TCP connection and TLS session. HTTP/1.1 also supports request pipelining, meaning that multiple requests can be sent on the same TCP connection before receiving the responses, although it is rarely used because not all server implementations support it properly.
 
-The main limitation of HTTP/1.1 is however that it does not support responses multiplexing, meaning that responses must be transmitted sequentially. This causes a problem known as \textbf{HTTP head-of-line blocking}, where the current request blocks the following requests. Browsers try to workaround this issue by opening multiple TCP connections to the same web server when loading web pages, up to a (configurable) limit.\footnote{For example, Firefox uses 6 as a default connection limit, but the value can be changed through the \texttt{network.http.max-persistent-connections-per-server} preference} 
+The main limitation of HTTP/1.1 is, however, that it does not support responses multiplexing, meaning that responses must be transmitted sequentially. This causes a problem known as \textbf{HTTP head-of-line blocking}, where the current request blocks the following requests. Browsers try to workaround this issue by opening multiple TCP connections to the same web server when loading web pages, up to a (configurable) limit.\footnote{For example, Firefox uses 6 as a default connection limit, but the value can be changed through the \texttt{network.http.max-persistent-connections-per-server} preference.} 
 
 \subsection{HTTP/2}
 \label{sec:bg/http2}
@@ -432,7 +482,7 @@ When conducting research or developing applications that use HTTP/3 features, it
     \item \textbf{Wireshark}, the popular network protocol analyzer, which includes support for QUIC and HTTP/3, although still very basic and missing most features;\footnote{\url{https://gitlab.com/wireshark/wireshark/-/issues/16761}}
     \item \texttt{qlog}, a project by the IETF QUIC Working Group aimed at introducing a common logging format for QUIC. Both client and server implementations can support \texttt{qlog}, providing a way to capture and export network traces with QUIC-related events in a common format. \texttt{qlog} captures could then be parsed by \texttt{qlog} analyzers;\footnote{\url{https://github.com/quicwg/qlog}}
     \item Chrome's \textbf{NetLog dump}, a detailed capture of network activity from the perspective of the browser. It can be generated by browsing to \texttt{chrome://net-export}. The format is proprietary, but there are visualization tools that support the NetLog format;\footnote{\url{https://www.chromium.org/for-testers/providing-network-details/}}
-    \item \texttt{qvis}, developed by the authors of \cite{quicdiversity}, a suite of tools that analyze \texttt{qlog}, NetLog dumps or Wireshark captures to provide advanced insights into QUIC traces. The suite includes many visualization tools such as sequence diagrams, congestion control plots, multiplexing and packetization visualizations, and other detailed stats.\footnote{\url{https://qvis.quictools.info/}}
+    \item \texttt{qvis}, developed by the authors of \cite{quicdiversity}, a suite of tools that analyze \texttt{qlog}, NetLog dumps or Wireshark captures to provide advanced insights into QUIC traces. The suite includes many visualization tools such as sequence diagrams, congestion control plots, multiplexing and packetization visualizations, and other detailed statistics.\footnote{\url{https://qvis.quictools.info/}}
 \end{itemize}
 
 \section{Network emulation tools}

@@ -22,11 +22,12 @@
 \usepackage[paperheight=29.7cm,paperwidth=21cm,outer=1.5cm,inner=2.5cm,top=2cm,bottom=2cm]{geometry} % layout setting
 \usepackage{titlesec} % custom setup title of chapter
 
-% support for accented letters
+% Support for accented letters
 \usepackage[utf8]{inputenc}
 
 \singlespacing
 
+% Fix quotes
 \usepackage [english]{babel}
 \usepackage [autostyle, english = american]{csquotes}
 \MakeOuterQuote{"}
@@ -34,6 +35,12 @@
 % Better URL formatting and break on hyphens
 \usepackage[hyphens]{url}
 \usepackage[hidelinks]{hyperref}
+
+% "Continuous" footnote numbers
+\counterwithout{footnote}{chapter}
+
+% Code blocks
+\usepackage{minted}
 
 \begin{document}
 
