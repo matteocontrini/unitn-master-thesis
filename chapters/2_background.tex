@@ -1,17 +1,17 @@
 \chapter{Background}
 \label{cha:bg}
 
-Text.
+% TODO
 
 
 \section{Video compression concepts}
 \label{sec:bg/compression}
 
-Video is known to be one of the heaviest types of content to be stored and transmitted. Since treating uncompressed video is unfeasible, video compression or video coding formats have been developed and standardized over the years, with multiple implementations (\textit{codecs}) being released. The objective of video codecs is to limit the output data rate, measured in bits per second, while trying to maintain a perceptually good video quality.
+Video is known to be one of the heaviest types of content to be stored and transmitted. Since treating uncompressed video is unfeasible, video compression or video coding formats have been developed and standardized over the years, with multiple implementations (\textbf{codecs}) being released. The objective of video codecs is to limit the output data rate, measured in bits per second, while trying to maintain a perceptually good video quality.
 
-The process of compressing a video is known as \textbf{encoding} and is performed by an encoder. When a video file is already encoded in a video coding format and needs to be encoded in another, we often use the term \textbf{transcoding}.
+The process of compressing a video is known as \textbf{encoding} and is carried out by an encoder. When a video file is already encoded in a video coding format and needs to be encoded in another, we often use the term \textbf{transcoding}.
 
-In this section we will go through the main techniques that are used by most video coding standards.
+In this section, we will go through the main techniques that are used by most video coding standards.
 
 \subsection{RGB vs Y'CbCr}
 \label{sec:bg/compression/ycbcr}
@@ -26,13 +26,13 @@ A very common color space family used in digital video and images is \textbf{Y'C
     \item \textbf{Cr}: the red chroma component, representing a projection of the red color.
 \end{itemize}
 
-This approach is different from the common RGB (Red Green Blue) color space, where the luminance is not isolated from the color components, and allows to apply compression in a more effective way through the \textbf{chroma subsampling} technique.
+This approach is different from the common RGB (Red Green Blue) color space, where the luminance is not isolated from the color components, and allows compression to be applied more effectively through the \textbf{chroma subsampling} technique.
 
 Chrome subsampling refers to the practice of reducing the resolution of the chroma components while keeping the luminance at full resolution. Since our eyes are less sensitive to color than to brightness, we can reduce the color resolution by even 75\% with almost no perceptual impact on quality.
 
 % sources from LT
 
-The vast majority of digital video that can be found on the Internet or that is transmitted through digital television is compressed with the Y'CbCr 4:2:0 color space, the most common format for non-professional content. In Y'CbCr 4:2:0, the luminance component (Y) is encoded at full resolution, while the chroma components are stored at 1/4 of the resolution, that is, instead of storing 8 chroma samples for every 8 pixels we only keep 2, as shown in Figure X.
+The vast majority of digital video that can be found on the Internet or that is transmitted through digital television is compressed with the Y'CbCr 4:2:0 color space, the most common format for nonprofessional content. In Y'CbCr 4:2:0, the luminance component (Y) is encoded at full resolution, while the chroma components are stored at 1/4 of the resolution, that is, instead of storing 8 chroma samples for every 8 pixels we only keep 2, as shown in Figure X.
 
 % figure from LT
 
@@ -81,7 +81,7 @@ In general, a hybrid video codec works in three phases:\cite{h264}
 	\includegraphics[width=\textwidth]{res/hybrid_codec_detailed.png}
 	
 	\caption{Detailed hybrid codec architecture.\cite{h264}}
-	\label{fig:codec_highlevel}
+	\label{fig:codec_detailed}
 \end{figure}
 
 %The transform converts the samples into another domain in which they are represented by transform coefficients. The coefficients are quantized to remove insignificant values, leaving a small number of significant coefficients that provide a more compact representation of the residual frame. The output of the spatial model is a set of quantized transform coefficients.
@@ -140,9 +140,7 @@ Apart from the H.26x family of formats, Google released the royalty-free \textbf
 
 % TODO: sources
 
-The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies like Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{\url{https://aomedia.org/membership/members/}} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content like 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex, codec implementations are often prohibitively expensive to be run in software, thus requiring hardware support, an effort that can require quite a few years.
-
-% TODO: sources
+The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies such as Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{\url{https://aomedia.org/membership/members/}} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high resolution content such as 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex, codec implementations are often prohibitively expensive to run in software, thus requiring hardware support, an effort that can require quite a few years.\cite{av1}
 
 \subsubsection{H.264}
 \label{sec:bg/compression/codecs/h264}
@@ -156,7 +154,7 @@ The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018)
 	\label{fig:h264_scope}
 \end{figure}
 
-As we have seen, H.264 is still the dominant video format in the industry. Since the standard only covers the decoding part of the codec, as shown in Figure \ref{fig:h264_scope}, many codec implementations have been released, achieving different compression results. One of the most popular H.264 encoders is \texttt{x264}, which is open source and software-based, typically scoring as the best speed/quality trade-off in H.264 codec comparisons.\cite{msu2021}
+As we have seen, H.264 is still the dominant video format in the industry. Since the standard only covers the decoding part of the codec, as shown in Figure \ref{fig:h264_scope}, many codec implementations have been released, achieving different compression results. One of the most popular H.264 encoders is \texttt{x264}, which is open source and software-based, typically scoring as the best speed/quality trade-off in H.264 codec comparisons.\cite{msu2021} \texttt{x264} is also the default codec in \texttt{ffmpeg}, a very popular tool for video and audio manipulation and compression.
 
 H.264 is based on the hybrid codec model we have introduced earlier. Frames are divided into 16x16 pixels \textbf{macroblocks} (MB), on which the prediction model is applied. Macroblocks can be split into partitions that can be as small as 4x4 pixels (not necessarily square), so that the same macroblock can reference different macroblocks possibly in different reference frames.
 
@@ -177,7 +175,7 @@ Finally, an important part of H.264 is the syntax of the coded bitstream. The H.
 	\includegraphics[width=0.9\textwidth]{res/h264_nalu.png}
 	
 	\caption{H.264 bitstream structure and encapsulation alternatives.}
-	\label{fig:h264_scope}
+	\label{fig:h264_encapsulation}
 \end{figure}
 
 \section{Digital audio and compression}
@@ -240,7 +238,7 @@ For some use cases, like adaptive video streaming, a more suitable structure is 
 % TODO: mp4dump example
 
 \section{A typical live streaming architecture}
-\label{sec:bg/compression}
+\label{sec:bg/architecture}
 
 In a live streaming architecture, we can generally distinguish three main parts: \textbf{ingestion}, \textbf{transcoding and packaging}, and \textbf{distribution}.
 
@@ -311,7 +309,7 @@ segment-3.ts
 
 HLS media segments can be muxed in MPEG-2 TS format (\texttt{.ts} files) or fragmented MP4 format (\texttt{.mp4} or \texttt{.m4s} files), while supported video codecs are H.264 and H.265. When using \texttt{fMP4} as a container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes through the \texttt{\#EXT-X-MAP} tag.
 
-In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams, which are often taken as best practices in the industry when producing content for adaptive bitrate streaming.
+In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams, which are often taken as best practices in the industry when producing content for adaptive bitrate streaming.\cite{hlsauthoring}
 
 The authoring specification provides a set of recommendations to ensure compatibility with HLS implementation that can be found on Apple devices, including:
 
@@ -485,7 +483,7 @@ When conducting research or developing applications that use HTTP/3 features, it
     \item \texttt{qvis}, developed by the authors of \cite{quicdiversity}, a suite of tools that analyze \texttt{qlog}, NetLog dumps or Wireshark captures to provide advanced insights into QUIC traces. The suite includes many visualization tools such as sequence diagrams, congestion control plots, multiplexing and packetization visualizations, and other detailed statistics.\footnote{\url{https://qvis.quictools.info/}}
 \end{itemize}
 
-\section{Network emulation tools}
+\section{Network emulation}
 \label{sec:bg/network}
 
 When developing network-based applications or running benchmarks against the network, it is often useful to be able to setup a testbed that emulates an actual network. There are several software tools that do that, among which there are \textbf{Mininet} and \textbf{ComNetsEmu}, which we will briefly explain in the following sections.
@@ -499,7 +497,7 @@ With Mininet you can create arbitrarily complex custom topologies through the CL
 
 \begin{figure}
     \centering
-    \begin{minted}[frame=single,linenos,escapeinside=]{bash}
+    \begin{minted}[frame=single,linenos,highlightlines={18,22,28,36,42},fontsize=\small]{bash}
 $ sudo mn
 *** Creating network
 *** Adding controller
@@ -557,3 +555,5 @@ mininet> iperf
 Similarly to Mininet, ComNetsEmu can be programmed through the Python API. Hosts are Docker containers and applications deployed on hosts are Docker containers too. The application containers are deployed as siblings containers to emulate a "Docker-in-Docker" behavior.
 
 The recommended way to run ComNetsEmu is to use a Vagrant virtual machine, which takes care of setting up the software and all the required dependencies.\cite{comnetsemu}
+
+% TODO: maybe network patterns
