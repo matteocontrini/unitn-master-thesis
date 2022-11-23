@@ -25,6 +25,7 @@
 % Support for accented letters
 \usepackage[utf8]{inputenc}
 
+% Line spacing
 \singlespacing
 
 % Better URL formatting and break on hyphens
@@ -46,19 +47,12 @@
 
 \begin{document}
 
-  % no page number
+  % No page number
   \pagenumbering{gobble} 
   \input{parts/front}
 
   \clearpage
- 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Note
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Thanks/ Acknowledgements section is optional
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
   \input{parts/acknowledgements}
   \clearpage
   \pagestyle{plain} % no heading, footer with centered page number
@@ -67,63 +61,33 @@
   % page number with Arabic format
   \mainmatter
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Note
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Length: approximately 70 pages.
-%% These 70 pages include:
-%%   table of contents
-%%   abstract
-%%   chapters
-%% Exclude:
-%%   title page
-%%   acknowledgments
-%%   attachments
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
     % index
     \tableofcontents
     \clearpage
-    
-    
-          
+
+
     % group to define space between chapters
     \begingroup
       % no page break between chapters
       % override clear page commands
       %\renewcommand{\cleardoublepage}{}
       %\renewcommand{\clearpage}{}
-      
-      % override format of title chapter
-      % from
-      %   Chapter X
-      %   Title
-      % to
-      %   X   Title
-      
-      \titleformat{\chapter}
-        {\normalfont\Huge\bfseries}{\thechapter}{1em}{}
-        
+
       \titlespacing*{\chapter}{0pt}{0.59in}{0.02in}
       \titlespacing*{\section}{0pt}{0.20in}{0.02in}
       \titlespacing*{\subsection}{0pt}{0.10in}{0.02in}
       
       % summary / abstract
       \input{chapters/0_abstract}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Note
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 %% The first chapter of the final thesis must contain a summary of a 
 %% maximum length of 3 pages, introducing the context and motivations,
 %% resuming the problem faced by the student, the techniques used for the
 %% investigation and the reached outcomes.
 %% If the final thesis is developed in collaboration with other students,
 %% the personal contribution of the student has to be underlined.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
+  
       
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       % chapters
@@ -144,10 +108,8 @@
     % alphabetical order of authors
     \bibliographystyle{plain}
     \bibliography{parts/biblio}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Nota
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 %% In the bibliography, all the sources consulted for the dissertation 
 %% have to be cited and listed in alphabetical order by the 
 %% first author's surname.
@@ -176,8 +138,6 @@
 %%     the title and subtitle of the text
 %%   - If available, indicate the last date you retrieved the webpage
 %%     (day/month/year).   
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 
     \titleformat{\chapter}
