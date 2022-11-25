@@ -295,13 +295,13 @@ link.intf2.config(bw=bw, delay=delay, loss=loss)
 
 To emulate a realistic network with oscillating bandwidth and jittery latency, a way to apply a \textbf{custom network pattern} was needed. This is not something that Mininet or ComNetsEmu provide out of the box, so we implemented a strategy that consists in varying the network configuration of the link interfaces every second of the emulation, depending on a network pattern dataset contained in a CSV file.
 
-This periodic update is actually triggered by the Node.js backend application that is hosted on host 1, but the actual update of the network link configuration must be done through the ComNetsEmu Python code. For this reason, we implemented an \textbf{HTTP API server} in the ComNetsEmu applcation so that the containers can call the API to interact with the emulation "brain".
+This periodic update is actually triggered by the Node.js backend application that is hosted on host 1, but the actual update of the network link configuration must be done through the ComNetsEmu Python code. For this reason, we implemented an \textbf{HTTP API server} in the ComNetsEmu script so that the containers can call the API to interact with the emulation "brain".
 
 In practice, there are two endpoints exposed on HTTP port 8080 by the main application:
 
 \begin{itemize}
     \item \texttt{POST /update}, with a JSON payload containing the new parameters of the link between switch 1 and switch 2. In particular, the parameters are \texttt{bw} (in Mbps), \texttt{rtt} (in milliseconds), \texttt{loss} (in percentage).
-    \item \texttt{POST /stop}, which stops the emulation and all the containers. The ComNetsEmu application does not know when the experiments are complete, so the experiment runner can communicate this through the stop endpoint.
+    \item \texttt{POST /stop}, which stops the emulation and all the containers. The ComNetsEmu script does not know when the experiments are complete, so the experiment runner can communicate this through the stop endpoint.
 \end{itemize}
 
 \subsubsection{Network patterns}
@@ -583,9 +583,25 @@ else if (!this.isStalled && this.element.readyState < 3) {
     \label{fig:hls_readystate}
 \end{figure}
 
+\subsection{The glue: the ComNetsEmu script}
+\label{sec:eval/testbed/script}
+
+As mentioned above, all the components of the testbed are coordinated by a ComNetsEmu script written in Python. When launched, the script performs the following operations:
+
+\begin{itemize}
+    \item create a \texttt{ContainerNet}, i.e. a network with support for containers, provided by ComNetsEmu, a \texttt{VNFManager}, i.e. a Virtual Network Functions manager that allows to launch the containerized applications, and the SDN controller;
+    \item add the three hosts with hostnames \texttt{h1}, \texttt{h2}, and \texttt{h3}, with static private IPs assigned to them;
+    \item add the two switches, \texttt{s1} and \texttt{s2}, and create the links, as seen in Section \ref{sec:eval/testbed/network};
+    \item start the network and perform a ping between \texttt{h1} and \texttt{h2} to check connectivity between the two switches;
+    \item start the API server (Section \ref{sec:eval/testbed/network}) that listens on the \texttt{docker0} interface so that it can be accessed by the containerized applications;
+    \item update the \texttt{/etc/hosts} file of \texttt{h1} so that it can reach \texttt{h2} by using the domain name \texttt{cdn.local};
+    \item add the application containers to the VNF manager, making sure to pass the required environment variables and setting up the volume mounts (for example, the live source and the CDN containers must share the folder where the segment data is written/read);
+    \item wait for the API server to emit a stop event (triggered when the \texttt{/stop} endpoint is called) and stop all the containers and the network; the event is propagated with an instance of \texttt{threading.Event} Python class.
+\end{itemize}
 
 
-% TODO: topopology code
+
+
 
 
 % TODO: actual network patterns
