@@ -589,7 +589,7 @@ else if (!this.isStalled && this.element.readyState < 3) {
 As mentioned above, all the components of the testbed are coordinated by a ComNetsEmu script written in Python. When launched, the script performs the following operations:
 
 \begin{itemize}
-    \item create a \texttt{ContainerNet}, i.e. a network with support for containers, provided by ComNetsEmu, a \texttt{VNFManager}, i.e. a Virtual Network Functions manager that allows to launch the containerized applications, and the SDN controller;
+    \item create a \texttt{ContainerNet}, i.e. a network with support for containers, a \texttt{VNFManager}, i.e. a Virtual Network Functions manager that allows to launch the containerized applications, and the SDN controller;
     \item add the three hosts with hostnames \texttt{h1}, \texttt{h2}, and \texttt{h3}, with static private IPs assigned to them;
     \item add the two switches, \texttt{s1} and \texttt{s2}, and create the links, as seen in Section \ref{sec:eval/testbed/network};
     \item start the network and perform a ping between \texttt{h1} and \texttt{h2} to check connectivity between the two switches;
@@ -598,6 +598,67 @@ As mentioned above, all the components of the testbed are coordinated by a ComNe
     \item add the application containers to the VNF manager, making sure to pass the required environment variables and setting up the volume mounts (for example, the live source and the CDN containers must share the folder where the segment data is written/read);
     \item wait for the API server to emit a stop event (triggered when the \texttt{/stop} endpoint is called) and stop all the containers and the network; the event is propagated with an instance of \texttt{threading.Event} Python class.
 \end{itemize}
+
+\subsection{Analysis and visualization with R}
+\label{sec:eval/testbed/dataviz}
+
+After each experiment is run in an emulation, the collected events are serialized to a JSON file as an array. Each event is characterized by the timestamp, the type, and the optional metadata. This data is then used to generate some plots and indicators that help us to understand how the playback session performed in terms of quality of experience.
+
+To parse, analyze, and visualize the data, we decided to use R, the programming language for data science. In particular, the libraries that were used are TODO.
+
+The visualization of the data mainly consists of 3 plots:
+
+\begin{itemize}
+    \item the buffer health plot;
+    \item the live latency plot;
+    \item the waterfall.
+\end{itemize}
+
+A more detailed explanation of these plots will be provided in the following sections when analyzing the results of some experiments.
+
+\subsection{Different browsers behaviors}
+\label{sec:eval/browsers}
+
+An important thing to keep in mind is that different browsers have different implementations of the network protocols and can therefore show different behaviors. One of these differences relates to how \textbf{HTTP priorities} are handled.
+
+According to our tests, Chromium (v107) allows to specify the \texttt{Priority} header in requests sent with the \texttt{fetch} API. The header is in fact passed as is to the HTTP server. However, the browser also sends a \texttt{PRIORITY\_UPDATE} frame after sending the HTTP request, overriding the priority specified through the header. The \texttt{PRIORITY\_UPDATE} frame is sent as part of the prioritization strategy implemented by the browser, which applies its own heuristics to determine which requests should be prioritized, both internally in the browser and at the network level.
+
+The \textbf{Priority Hints} feature provides a way to control the priority that is given to individual HTTP requests. The Priority Hints specification is still a W3C draft but Chromium already implements it. The priority values that are defined by the specification are \texttt{high} and \texttt{low}.\footnote{\url{https://wicg.github.io/priority-hints/}} By default, \texttt{fetch} API requests have a priority of \texttt{high}, which corresponds to HTTP/3 priority \texttt{1} (where 0 means highest priority). If the \texttt{fetch} priority is set to \textbf{low}, it turns out that Chromium does not send the \texttt{PRIORITY\_UPDATE} frame at all, therefore the default priority of \texttt{3} is applied. In practice, this behavior allows to set the priority through the \texttt{Priority} header. Figure \ref{fig:chromium_fetch} show some examples of how priorities are currently handled in Chromium.
+
+\begin{figure}
+    \centering
+    \begin{minted}[frame=single]{js}
+await fetch('/');
+// Priority hint   => default => high
+// Priority header => not sent
+// PRIORITY_UPDATE => sent with urgency 1
+
+await fetch('/', { headers: { Priority: 'u=2' } });
+// Priority hint   => default => high
+// Priority header => sent with urgency 2
+// PRIORITY_UPDATE => sent with urgency 1
+
+await fetch('/', { priority: 'low' });
+// Priority hint   => low
+// Priority header => not sent
+// PRIORITY_UPDATE => not sent, default to urgency 3
+
+await fetch('/', { priority: 'low', headers: { Priority: 'u=2' } });
+// Priority hint   => low
+// Priority header => sent with urgency 2
+// PRIORITY_UPDATE => not sent
+    \end{minted}
+    \caption{Caption}
+    \label{fig:chromium_fetch}
+\end{figure}
+
+To summarize, in Chromium it is possible to set custom priority values both by using the \texttt{Priority} header or the Priority Hints feature.
+
+In Firefox, the behavior is different. First, Firefox does not support Priority Hints. It also appears it does not use the \texttt{PRIORITY\_UPDATE} frame, instead relying on the \texttt{Priority} header internally. By default, the urgency is set to \texttt{4} for \texttt{fetch} requests. However, setting the \texttt{Priority} header manually does not seem to have any effect, since the header is overriden by Firefox. In practice, this means that until Firefox adds support for Priority Hints there is no way to send a custom priority.
+
+A problem that might arise when using the \texttt{Priority} header, common to all browsers, is related to how \textbf{cross-origin requests} are handled. A cross-origin request is a request generated by a web page that has a destination whose domain, scheme, or port do not match those of the current web page. For security reasons, browser require that the server explicitly authorize the origin to execute cross-origin requests when they might have undesired effects on user data. This is done through CORS, which consists in sending an additional preflight request before the actual HTTP request so that the server can specify which requests are allowed (through response headers). The presence of the \texttt{Priority} header triggers a preflight request before each HTTP request if the request is cross-origin (which is often the case when using a CDN), with the disadvantage of introducing additional latency.
+
+To workaround the issue of not being able to specify the HTTP/3 priority in some cases, and more importantly the CORS issue, we implemented a patch to \texttt{h2o} so that the priority can be forced with a query string parameter. So, for example, a request such as \texttt{GET /segment1.m4s?priority=2} would give the request an urgency value of \texttt{2}.
 
 
 
@@ -608,10 +669,6 @@ As mentioned above, all the components of the testbed are coordinated by a ComNe
 
 % TODO: list of experiments
 
-% TOOD: actual latency target configuration
-
-% TODO: how plots were made
-
-% / testbed
+% TODO: actual latency target configuration
 
 % -> results

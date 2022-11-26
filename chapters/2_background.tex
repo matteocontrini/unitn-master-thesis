@@ -21,18 +21,18 @@ The most basic form of compression can be obtained by converting individual pict
 A very common color space family used in digital video and images is \textbf{Y'CbCr}, sometimes improperly called YUV (which relates to the analog domain), which exploits the fact that the human vision system is much more sensitive to light variations (brightness) than to color. The Y'CbCr color space decomposes the color information of a pixel into three components:
 
 \begin{itemize}
-    \item \textbf{Y'}: the luminance, representing the brightness of the image;
+    \item \textbf{Y'}: the luma\footnote{Sometimes called luminance, although luma is the correct term for the non-linear gamma-corrected representation of luminance in digital video.}, representing the brightness of the image;
     \item \textbf{Cb}: the blue chroma component, representing a projection of the blue color;
     \item \textbf{Cr}: the red chroma component, representing a projection of the red color.
 \end{itemize}
 
-This approach is different from the common RGB (Red Green Blue) color space, where the luminance is not isolated from the color components, and allows compression to be applied more effectively through the \textbf{chroma subsampling} technique.
+This approach is different from the common RGB (Red Green Blue) color space, where the luma is not isolated from the color components, and allows compression to be applied more effectively through the \textbf{chroma subsampling} technique.
 
-Chrome subsampling refers to the practice of reducing the resolution of the chroma components while keeping the luminance at full resolution. Since our eyes are less sensitive to color than to brightness, we can reduce the color resolution by even 75\% with almost no perceptual impact on quality.
+Chrome subsampling refers to the practice of reducing the resolution of the chroma components while keeping the luma at full resolution. Since our eyes are less sensitive to color than to brightness, we can reduce the color resolution by even 75\% with almost no perceptual impact on quality.
 
 % sources from LT
 
-The vast majority of digital video that can be found on the Internet or that is transmitted through digital television is compressed with the Y'CbCr 4:2:0 color space, the most common format for nonprofessional content. In Y'CbCr 4:2:0, the luminance component (Y) is encoded at full resolution, while the chroma components are stored at 1/4 of the resolution, that is, instead of storing 8 chroma samples for every 8 pixels we only keep 2, as shown in Figure X.
+The vast majority of digital video that can be found on the Internet or that is transmitted through digital television is compressed with the Y'CbCr 4:2:0 color space, the most common format for nonprofessional content. In Y'CbCr 4:2:0, the luma component (Y') is encoded at full resolution, while the chroma components are stored at 1/4 of the resolution, that is, instead of storing 8 chroma samples for every 8 pixels we only keep 2, as shown in Figure X.
 
 % figure from LT
 
