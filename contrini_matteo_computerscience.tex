@@ -28,6 +28,15 @@
 % Line spacing
 \singlespacing
 
+% Enable numbering of subsubsections
+\setcounter{secnumdepth}{3}
+
+% Allow changing the TOC depth in the middle of the document
+\newcommand{\changelocaltocdepth}[1]{%
+  \addtocontents{toc}{\protect\setcounter{tocdepth}{#1}}%
+  \setcounter{tocdepth}{#1}%
+}
+
 % Better URL formatting and break on hyphens
 \usepackage[hyphens]{url}
 \usepackage[hidelinks]{hyperref}
@@ -92,14 +101,10 @@
 %% If the final thesis is developed in collaboration with other students,
 %% the personal contribution of the student has to be underlined.
   
-      
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       % chapters
-      %
-      % \input or \include
-      %
       \input{chapters/1_introduction}
       \input{chapters/2_background}
+      \changelocaltocdepth{3}
       \input{chapters/3_evaluation}
       
     \endgroup
