@@ -314,9 +314,9 @@ Two main network datasets were used for the emulations. In particular:
     \item A synthetic set of network patterns used in the context of the \textit{2020 Grand Challenge on Adaption Algorithms for Near-Second Latency} organized by Twitch for the \textit{ACM Multimedia Systems Conference}.\footnote{\url{https://2020.acmmmsys.org/lll_challenge.php}}
 \end{itemize}
 
-The 4G dataset contains traces collected between 2017 and 2018 from two major Irish mobile operators with different mobility patterns (static, pedestrian, car, tram and train). The dataset contains 135 traces with an average duration of 15 minutes and a throughput ranging from 0 to 173 Mbps. The traces are organized in CSV files, and each of them contains general information such as the timestamp, coordinates, and speed, technical information about the mobile link such as the type of network (LTE, HSPA+, etc.), SNR and RSRP, and finally the measured throughput for both downlink and uplink. From this dataset we extracted some 1-minute sequences. % TODO: was it train? How many sequences?
+The 4G dataset contains traces collected between 2017 and 2018 from two major Irish mobile operators with different mobility patterns (static, pedestrian, car, tram and train). The dataset contains 135 traces with an average duration of 15 minutes and a throughput ranging from 0 to 173 Mbps. The traces are organized in CSV files, and each of them contains general information such as the timestamp, coordinates, and speed, technical information about the mobile link such as the type of network (4G/LTE, 3G/HSPA+, etc.), SNR and RSRP, and finally the measured throughput for both downlink and uplink. From this dataset we extracted some 1-minute sequences. % TODO: was it train? How many sequences?
 
-The patterns from Twitch's Grand Challenge are useful when testing low-latency scenarios, since the patterns are purposely designed to hinder adaption algorithms. Two patterns used in our testbed were inspired from this source, specifically the cascade pattern, where the bandwidth is slowly reduced with time, and the spike pattern, where the bandwidth drops abruptly for a fixed period of time.
+The patterns from Twitch's Grand Challenge are useful when testing low-latency scenarios, since the patterns are purposely designed to hinder adaption algorithms. Two patterns used in our testbed were inspired from this source, specifically the \texttt{cascade} pattern, where the bandwidth is slowly reduced with time, and the \texttt{spike} pattern, where the bandwidth drops abruptly for a fixed period of time.
 
 \subsection{Client backend and headless browser}
 \label{sec:eval/testbed/backend}
@@ -690,7 +690,7 @@ const experiments = [
 \end{figure}
 
 \subsubsection{Suboptimal behavior over HTTP/3}
-\label{sec:eval/non-abr/h3-preemption}
+\label{sec:eval/non-abr/h3-behavior}
 
 As a first step, we will look at the results of the experiment named \texttt{lte\_h3}, which uses DASH over HTTP/3 with the \texttt{lte} dataset.
 
@@ -746,7 +746,7 @@ In our case, what we can clearly see in the multiplexing diagrams, especially in
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.9\textwidth]{res/eval_noabr_qvis1.png}
+    \includegraphics[width=0.9\textwidth]{res/eval_nonabr_qvis1.png}
     \caption{Caption}
     \label{fig:eval_noabr_qvis1}
 \end{figure}
@@ -755,9 +755,7 @@ However, an interesting fact to observe is that the data flow is not entirely se
 
 This behavior explains what we were seeing in the segments requests waterfall in Figure \ref{fig:eval_nonabr_lte_h3_waterfall}. Requests for audio and video segments often start at the same time; however, the transfer of the audio segment is almost immediately preempted to give priority to the video segment. The audio segment transfer is then completed after the video segment is completely downloaded.
 
-This behavior is not ideal, because the audio segment is always much smaller than the video segment and thus could benefit from being transmitted earlier, as we will see in the next section.
-
-The next section will also compare how this same setup performs with HTTP/2 and HTTP/1.1, showing that the scheduling scheme that was observed seems to be specific to HTTP/3, or at least to the HTTP/3 implementation that we are relying on.
+This behavior is not ideal, because the audio segment is always much smaller than the video segment and thus could benefit from being transmitted earlier, as we will see in the next section. The next section will also compare how this same setup performs with HTTP/2 and HTTP/1.1, showing that the scheduling scheme that was observed seems to be specific to HTTP/3, or at least to the HTTP/3 implementation that we are relying on.
 
 The takeaway result of this analysis is that we cannot rely on HTTP/3 implementations to always know the best strategy for request prioritization. Instead, it is also the client/browser's responsibility to implement optimizations so that the prioritization strategy is meaningful.
 
@@ -765,9 +763,139 @@ The prioritization strategy could derive from browser heuristics that are applie
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.9\textwidth]{res/eval_noabr_qvis2.png}
+    \includegraphics[width=0.9\textwidth]{res/eval_nonabr_qvis2.png}
     \caption{Caption}
     \label{fig:eval_noabr_qvis2}
 \end{figure}
 
-% Comparison across HTTP versions
+\subsubsection{Comparison across HTTP versions}
+\label{sec:eval/non-abr/http-versions}
+
+As we have seen, the emulation over HTTP/3 shows that priorities are not consistent, even in the same run. We will now see how HTTP/2 and HTTP/1.1 behave and compare the results.
+
+Let us start from HTTP/2. Figure \ref{fig:eval_nonabr_lte_h2_buffer} shows the buffer health plot for an experiment execution based on HTTP/2. The rest of the settings remained the same. As we can easily see, the behavior is quite different from HTTP/3. First, the audio buffer is always larger than the video. This means that the audio segments are consistently loaded before the video buffer. The waterfall in Figure \ref{fig:eval_nonabr_lte_h2_waterfall} confirms that this is because the audio segments are loaded much faster, as we would expect, and the loading of the video segments does not delay the audio. This behavior probably derives from a different prioritization strategy, implemented by the browser or driven by the HTTP/2 server implementation.
+
+The other thing that we can observe is that there are no playback stalls, apart from the initial loading, even if the video buffer is almost empty for several seconds in the middle of the emulation. This behavior derives from the fact that the browser is capable of playing the audio data even if the video is not available, for up to 3 seconds. This particular underflow behavior is specific to Chromium and is officially documented. Obviously, it can only work when audio and video data is appended to the MSE \texttt{SourceBuffer} independently; therefore, in practice it can only happen when using unmuxed video and audio tracks, as in our case.
+
+Although Chromium's underflow behavior might not be the expected experience when streaming on-demand content, since it has the effect of freezing the video for a few seconds, it is instead particularly suitable for live streaming. In fact, in this way short time intervals where video data is not available do not cause a stall, and, therefore, do not increase the latency of the live streams. While the video is frozen due to a slow loading segment, the audio will continue to play.
+
+\begin{figure}[h]
+	\centering
+	
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h2.png}
+		\caption{Caption}
+		\label{fig:eval_nonabr_lte_h2_buffer}
+	\end{subfigure}%
+	~ 
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h2_waterfall.png}
+		\caption{Caption}
+		\label{fig:eval_nonabr_lte_h2_waterfall}
+	\end{subfigure}
+	
+	\caption{Caption}
+	\label{fig:eval_nonabr_lte_h2}
+\end{figure}
+
+Moving on to HTTP/1.1, the behavior that we observed is somewhat similar to HTTP/2. As Figure \ref{fig:eval_nonabr_lte_h1_buffer} shows, the audio buffer is virtually always longer than the video buffer. One thing to note is that there is a playback stall at about 38 seconds, even if the audio buffer contains several seconds of data. This is due to the limitations of the underflow tolerance that we have seen earlier: Chromium only allows the video track to have missing data for about 3 seconds, after which the playback will stall. We will tackle this limitation in Section X.
+
+The waterfall diagram for HTTP/1.1, shown in \ref{fig:eval_nonabr_lte_h1_waterfall}, is perhaps even more interesting. It shows that the download of the audio segments, represented in red, is consistently completed in a very short amount of time. Intuitively, the explanation for this phenomenon is that HTTP/1.1 can use multiple independent TCP connections, not performing multiplexing at all. In this way, requests can be distributed among the connections and benefit from a "dedicated" transmission channel.
+
+\begin{figure}[h]
+	\centering
+	
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h1.png}
+		\caption{Caption}
+		\label{fig:eval_nonabr_lte_h1_buffer}
+	\end{subfigure}%
+	~ 
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h1_waterfall.png}
+		\caption{Caption}
+		\label{fig:eval_nonabr_lte_h1_waterfall}
+	\end{subfigure}
+	
+	\caption{Caption}
+	\label{fig:eval_nonabr_lte_h1}
+\end{figure}
+
+These results are surprising. We are seeing that HTTP/2 and HTTP/1.1 appear to offer better scheduling of requests. Incidentally, this also translates into a live streaming experience that has fewer "hard" stalls and where the latency does not increase.
+
+\subsubsection{The need for adaptive bitrate streaming}
+\label{sec:eval/non-abr/adaptive}
+
+The experiments mentioned above were conducted with the \texttt{lte} network pattern, where the network bandwidth is most of the time higher than the media bitrate. In the \texttt{hspa+} pattern the situation is different: the bandwidth is just slightly above the media bitrate and often goes below it. This is pretty clear from Figure \ref{fig:eval_nonabr_hspa+_h3_buffer}, where there are many stalls in all situations where the bandwidth is not enough. The consequence is that the live latency increases during the playback stall periods, reaching 23 seconds as shown in \ref{fig:eval_nonabr_hspa+_h3_waterfall}.
+
+\begin{figure}[h]
+	\centering
+	
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/eval_nonabr_hspa+_h3.png}
+		\caption{Caption}
+		\label{fig:eval_nonabr_hspa+_h3_buffer}
+	\end{subfigure}%
+	~ 
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/eval_nonabr_hspa+_h3_latency.png}
+		\caption{Caption}
+		\label{fig:eval_nonabr_hspa+_h3_waterfall}
+	\end{subfigure}
+	
+	\caption{Caption}
+	\label{fig:eval_nonabr_hspa+_h3}
+\end{figure}
+
+Adaptive bitrate streaming is needed for this reason: when the adaption algorithms estimates that there is not enough bandwidth to continue the playback at the current bitrate, it will make the decision to switch to a lower bitrate. In the next sections, we will see how the system performs when adaptive bitrate streaming is enabled.
+
+\subsection{Experiments and results in an ABR setup}
+\label{sec:eval/abr}
+
+The testbed that we introduced in Section \ref{sec:eval/testbed} is already capable of running experiments on a live stream that is adaptive. In fact, if we do not specify the minimum bitrate in the experiment configuration the playback will be ABR. We tested this setup with both DASH.js and hls.js.
+
+\subsubsection{Suboptimal behavior of the default DASH.js configuration with live}
+\label{sec:eval/abr/dashjs}
+
+An experiment we run involved using DASH.js with the ABR stream and the \texttt{lte} network pattern. As a reminder, the bitrate ladder we are using in this experiment is made of four resolutions (720p, 540p, 360p, 270p) with video bitrates of 3.5 Mbps, 2.5 Mbps, 1.5 Mbps and 0.8 Mbps.
+
+The buffer health plot in Figure \ref{fig:eval_abr_dashjs} shows that with this configuration buffer underflows and playback stalls are essentially eliminated, compared to Figure \ref{fig:eval_nonabr_lte_h3} (non-ABR case) where there were multiple stalls. This is due to the fact that the default configuration of DASH.js is relatively aggressive in downswitching the resolution/bitrate. Therefore, it is able to quickly react to the worsening network conditions at about 30 seconds, and lower the bitrate to 2.5 and then 1.5 Mbps. A similar result (not shown here) is obtained with the \texttt{hspa+} pattern.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{res/eval_abr_dash_dynamic.png}
+    \caption{Caption}
+    \label{fig:eval_abr_dashjs}
+\end{figure}
+
+There is, however, an evident disadvantage to this aggressive approach, which can be seen between second 40 and second 60 in the plot. The bandwidth is always above 8 Mbps in that interval of the experiment, and thus there should be more than enough bandwidth to keep the stream at the highest quality and bitrate (3.5 Mbps).
+
+Instead, what we observe is that the adaption algorithm keeps switching quality in a way that does not seem to make much sense. At second 40, the bitrate is raised to 3.5 Mbps but almost immediately switched down to 2.5 Mbps. The algorithm then tries to raise the bitrate again and immediately falls to 1.5 Mbps. This oscillating pattern is repeated a few times until the experiment is over.
+
+We observed that this behavior is consistent between different runs of the same experiment and is therefore something that should be investigated.
+
+% TODO: try both dash and hls with hspa+
+
+\subsubsection{Other network patterns and experiments with hls.js}
+\label{sec:eval/abr/hls}
+
+To find a situation where the adaption algorithm does not behave well and leads to playback stalls, we relied on new network patterns inspired by Twitch's dataset for low-latency scenarios, introduced in \ref{sec:eval/testbed/network/patterns}. Specifically, for this analysis we will take into consideration the \texttt{spike} pattern, which contains an abrupt drop in bandwidth that lasts for a few seconds. The duration of the experiments based on this pattern is about 30 seconds.
+
+At this point of the analysis, we also had a complete implementation of the integration with hls.js in the testbed, and therefore we run the experiments with both DASH.js and hls.js.
+
+Figure \ref{fig:eval_abr_hls} shows the buffer health plot of an experiment run with hls.js and the \texttt{spike} network pattern over HTTP/3. As can be seen, when the bandwidth suddenly drops from about 4 Mbps to 1 Mbps the adaption algorithm struggles to react in time, causing a couple of playback stalls and thus increasing latency. An observation we could do is that if the audio had priority over video, the playback stalls would be avoided, since they are shorter than 3 seconds.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{res/eval_abr_spike_hls.png}
+    \caption{Caption}
+    \label{fig:eval_abr_hls}
+\end{figure}
+
+% TODO: chromium, ff, dash.js, hls.js versions?
