@@ -1,19 +1,3 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% Template for Master degrees
-% DISI - Dipartimento di Ingegneria e Scienza dell’Informazione
-% DISI - Department of Information Engineering and Computer Science
-%
-% update 2020-08-30
-%
-% To generate pdf 
-% pdflatex __filename__.tex
-% bibtex __file_name__.aux
-% pdflatex __file_name__.tex
-% pdflatex __file_name__.tex
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % 2 side format
 \documentclass[epsfig,a4paper,11pt,titlepage,twoside,openany]{book}
 \usepackage{epsfig}
@@ -22,20 +6,14 @@
 \usepackage[paperheight=29.7cm,paperwidth=21cm,outer=1.5cm,inner=2.5cm,top=2cm,bottom=2cm]{geometry} % layout setting
 \usepackage{titlesec} % custom setup title of chapter
 
+% To include PDF pages
+\usepackage{pdfpages}
+
 % Support for accented letters
 \usepackage[utf8]{inputenc}
 
 % Line spacing
 \singlespacing
-
-% Enable numbering of subsubsections
-\setcounter{secnumdepth}{3}
-
-% Allow changing the TOC depth in the middle of the document
-\newcommand{\changelocaltocdepth}[1]{%
-  \addtocontents{toc}{\protect\setcounter{tocdepth}{#1}}%
-  \setcounter{tocdepth}{#1}%
-}
 
 % Better URL formatting and break on hyphens
 \usepackage[hyphens]{url}
@@ -62,7 +40,8 @@
 
   % No page number
   \pagenumbering{gobble} 
-  \input{parts/front}
+  %\input{parts/front}
+  \includepdf[pages=-]{parts/front.pdf}
 
   \clearpage
 
@@ -94,19 +73,15 @@
       \input{chapters/0_abstract}
 
 
-%% The first chapter of the final thesis must contain a summary of a 
-%% maximum length of 3 pages, introducing the context and motivations,
-%% resuming the problem faced by the student, the techniques used for the
-%% investigation and the reached outcomes.
-%% If the final thesis is developed in collaboration with other students,
-%% the personal contribution of the student has to be underlined.
-  
+% The first chapter of the final thesis must contain a summary of a maximum length of 3 pages, introducing the context and motivations, resuming the problem faced by the student, the techniques used for the investigation and the reached outcomes.
+
       % chapters
-      \input{chapters/1_introduction}
+      %\input{chapters/1_introduction}
+      \chapter{Introduction}
       \input{chapters/2_background}
-      \changelocaltocdepth{3}
-      \input{chapters/3_evaluation}
-      
+      \input{chapters/3_testbed}
+      \input{chapters/4_evaluation}
+
     \endgroup
 
 
