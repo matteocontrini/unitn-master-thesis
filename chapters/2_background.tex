@@ -360,9 +360,9 @@ In addition to the RFC, Apple maintains an \textit{Authoring Specification for A
 The authoring specification provides a set of recommendations to ensure compatibility with HLS implementation that can be found on Apple devices, including the following:
 
 \begin{itemize}
-    \item a table with a possible set of variants with their bitrate and frame rate (a \textit{bitrate ladder}), for both H.264 and H.265, plus a recommendation to adjust them according to the specific use case;
-    \item an indication that the peak bitrate should be no more than 200\% of the average bitrate, although it is often recommended to make the bitrate as constant as possible;\cite{ozer}
-    \item a recommendation for a segment duration of 6 seconds, although 4 seconds or lower are common values in practice.\cite{ozer}
+    \item A table with a possible set of variants with their bitrate and frame rate (a \textit{bitrate ladder}), for both H.264 and H.265, plus a recommendation to adjust them according to the specific use case.
+    \item An indication that the peak bitrate should be no more than 200\% of the average bitrate, although it is often recommended to make the bitrate as constant as possible.\cite{ozer}
+    \item A recommendation for a segment duration of 6 seconds, although 4 seconds or lower are common values in practice.\cite{ozer}
 \end{itemize}
 
 HLS also includes support for encryption, ads, trick play (scrubbing and fast forward), subtitles, and multiple audio tracks.
@@ -372,9 +372,67 @@ There is a variant of HLS, known as \textbf{Low-Latency HLS} (LL-HLS), which is 
 \subsection{MPEG Dynamic Adaptive Streaming over HTTP (DASH)}
 \label{sec:bg/technologies/dash}
 
-TODO
+MPEG Dynamic Adaptive Streaming over HTTP (DASH) is an alternative to HLS for adaptive streaming over HTTP. It was developed by the MPEG group and first published in 2012. Since it is the officially supported ABR protocol on HbbTV, the entertainment system for smart TV, it gained popularity and is often mandatory for streaming platforms that want to target TVs. It is not supported on iOS and Apple TV, so HLS is often still an easier choice to ensure broad compatibility.
 
-% LL-DASH
+DASH is a very complex standard, so we will just give a broad overview of how it works.\cite{dash}\cite{dash2} The are several differences between HLS and DASH:
+
+\begin{itemize}
+    \item Unlike HLS, DASH is codec-agnostic, therefore it can be used with any codec without waiting the standard to be updated.
+    \item It uses the \texttt{fMP4} container format by default, thus reducing the overhead introduced by MPEG-2 TS.
+    \item DASH does not use M3U playlists: there is a single manifest file (\texttt{.mpd} extension) in XML format.
+\end{itemize}
+
+The manifest file has a nested structure that combines the equivalent of the master and media playlists of HLS. The main elements in a DASH manifest file are:\footnote{\url{https://www.brendanlong.com/the-structure-of-an-mpeg-dash-mpd.html}}
+
+\begin{itemize}
+    \item \textbf{Adaption sets}: they define a group of representations (renditions) on which adaptation algorithms are executed. A common approach is to have one video adaptation set and multiple audio adaptation sets depending on the number of supported audio languages.
+    \item \textbf{Representations}: they represent the individual renditions in an adpatation set. Each representation usually has different encoding parameters, such as the bitrate, resolution and framerate, but could also have different codecs.
+    \item \textbf{Media segments}: within a representation, there are multiple ways to specify how the player should obtain the media segments. For example, with \texttt{SegmentList} we can insert the full list of segments in the manifest file. A smarter approach is to use the \texttt{SegmentTemplate} element, which allows the packager to define a pattern for predictable sequences of segments.
+    \item \textbf{Index segments}: they are the equivalent of the initialization segment, introduced with HLS.
+\end{itemize}
+
+A minimal example of a DASH manifest file is shown in Figure \ref{fig:dash_manifest}. In this case, there are two adaptation sets, one for video and one for audio. The video adaptation set contains two representations, corresponding to 720p and 540p. The file names of the segments are determined on the fly by the player using the \texttt{SegmentTemplate} definition. A similar approach is used for the audio adaptation set.
+
+\begin{figure}[h]
+    \centering
+    \begin{minted}[frame=single,fontsize=\small]{xml}
+<?xml version="1.0" encoding="utf-8" ?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:full:2011"
+     type="static" mediaPresentationDuration="PT60S">
+    <Period>
+        <!-- Video -->
+        <AdaptationSet id="0" mimeType="video/mp4" segmentAlignment="true"
+                       startWithSAP="1" maxWidth="1280" maxHeight="720">
+            <SegmentTemplate timescale="1000" duration="2000" startNumber="1"
+                             initialization="$RepresentationID$/init.mp4"
+                             media="$RepresentationID$/seg-$Number$.m4s" />
+            <Representation id="720p" codecs="avc1.64001F" width="1280" height="720"
+                            scanType="progressive" frameRate="25" bandwidth="3301246" />
+            <Representation id="540p" codecs="avc1.64001F" width="960" height="540"
+                            scanType="progressive" frameRate="25" bandwidth="2409696" />
+        </AdaptationSet>
+        <!-- Audio -->
+        <AdaptationSet mimeType="audio/mp4" startWithSAP="1" segmentAlignment="true">
+            <SegmentTemplate timescale="1000" duration="2000" startNumber="1"
+                             initialization="$RepresentationID$/init.mp4"
+                             media="$RepresentationID$/seg-$Number$.m4s" />
+            <Representation id="audio" codecs="mp4a.40.2" bandwidth="131632"
+                            audioSamplingRate="48000">
+                <AudioChannelConfiguration
+                    schemeIdUri="urn:mpeg:mpegB:cicp:ChannelConfiguration"
+                    value="2" />
+        </Representation>
+        </AdaptationSet>
+    </Period>
+</MPD>
+    \end{minted}
+    \caption{A minimal example of an MPEG-DASH manifest files, showing two adaptation sets (video and audio). The video set contains two representations, 720p and 540p.}
+    \label{fig:dash_manifest}
+\end{figure}
+
+In the example of Figure \ref{fig:dash_manifest}, the \texttt{type} field is set to \texttt{static}, which means that this manifest is for on-demand content. In the case of a live stream, the \texttt{type} has value \texttt{dynamic} and some additional fields are required. For example, the \texttt{availabilityStartTime} field specifies the timestamp corresponding to the start of the live stream, and is used by the player to calculate which segment should be requested next. Another important field is the \texttt{suggestedPresentationDelay}, which determines the target live latency (which can be overridden by the player).
+
+The MPEG-DASH standard also has an extension for low-latency streaming, known as \textbf{Low-Latency DASH} (LL-DASH). The approach of LL-DASH is conceptually similar to that of LL-HLS, but is technically implemented in a different way. Specifically, it takes advantage of the \textit{Chunked Transfer Encoding} (CTE) feature of HTTP/1.1. Similarly to LL-HLS, LL-DASH makes use of chunks which can be downloaded as soon as they are published. The client sends a single HTTP request per segment and waits for chunks to be delivered through HTTP CTE, decoding and playing them as soon as possible. Compared to LL-HLS, LL-DASH has a smaller overhead since it sends a much lower number of HTTP requests.\cite{llhls_vs_lldash}
 
 \subsection{Common Media Application Format (CMAF)}
 \label{sec:bg/technologies/cmaf}
