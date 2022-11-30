@@ -726,7 +726,7 @@ The \textbf{buffer health plot} is shown in Figure \ref{fig:eval_nonabr_lte_h3}.
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_nonabr_lte_h3.png}
-    \caption{Caption}
+    \caption{Buffer health plot for DASH with the \texttt{lte} network pattern over HTTP/3.}
     \label{fig:eval_nonabr_lte_h3}
 \end{figure}
 
@@ -743,7 +743,7 @@ The effect of this behavior can be better seen in the \textbf{live latency plot}
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_nonabr_lte_h3_latency.png}
-    \caption{Caption}
+    \caption{Live latency plot for DASH with the \texttt{lte} network pattern over HTTP/3.}
     \label{fig:eval_nonabr_lte_h3_latency}
 \end{figure}
 
@@ -752,7 +752,7 @@ Finally, if we observe the \textbf{waterfall diagram} (Figure \ref{fig:eval_nona
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_nonabr_lte_h3_waterfall.png}
-    \caption{Caption}
+    \caption{Waterfall diagram for DASH with the \texttt{lte} network pattern over HTTP/3.}
     \label{fig:eval_nonabr_lte_h3_waterfall}
 \end{figure}
 
@@ -765,7 +765,7 @@ In our case, what we can clearly see in the multiplexing diagrams, especially in
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_nonabr_qvis1.png}
-    \caption{Caption}
+    \caption{\texttt{qvis} multiplexing diagrams for the MPEG-DASH over HTTP/3 experiment.}
     \label{fig:eval_noabr_qvis1}
 \end{figure}
 
@@ -782,7 +782,7 @@ The prioritization strategy could derive from browser heuristics that are applie
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_nonabr_qvis2.png}
-    \caption{Caption}
+    \caption{\texttt{qvis} waterfall diagram showing unexpected prioritization of audio segments requests over video with HTTP/3.}
     \label{fig:eval_noabr_qvis2}
 \end{figure}
 
@@ -803,18 +803,18 @@ Although Chromium's underflow behavior might not be the expected experience when
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h2.png}
-		\caption{Caption}
+		\caption{Buffer health plot.}
 		\label{fig:eval_nonabr_lte_h2_buffer}
 	\end{subfigure}%
 	~ 
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h2_waterfall.png}
-		\caption{Caption}
+		\caption{Waterfall diagram.}
 		\label{fig:eval_nonabr_lte_h2_waterfall}
 	\end{subfigure}
 	
-	\caption{Caption}
+	\caption{DASH experiment over HTTP/2 with the \texttt{lte} network pattern.}
 	\label{fig:eval_nonabr_lte_h2}
 \end{figure}
 
@@ -828,18 +828,18 @@ The waterfall diagram for HTTP/1.1, shown in \ref{fig:eval_nonabr_lte_h1_waterfa
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h1.png}
-		\caption{Caption}
+		\caption{Buffer health plot.}
 		\label{fig:eval_nonabr_lte_h1_buffer}
 	\end{subfigure}%
 	~ 
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/eval_nonabr_lte_h1_waterfall.png}
-		\caption{Caption}
+		\caption{Waterfall diagram.}
 		\label{fig:eval_nonabr_lte_h1_waterfall}
 	\end{subfigure}
 	
-	\caption{Caption}
+	\caption{DASH experiment over HTTP/1 with the \texttt{lte} network pattern.}
 	\label{fig:eval_nonabr_lte_h1}
 \end{figure}
 
@@ -856,18 +856,18 @@ The experiments mentioned above were conducted with the \texttt{lte} network pat
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/eval_nonabr_hspa+_h3.png}
-		\caption{Caption}
+		\caption{Buffer health plot.}
 		\label{fig:eval_nonabr_hspa+_h3_buffer}
 	\end{subfigure}%
 	~ 
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/eval_nonabr_hspa+_h3_latency.png}
-		\caption{Caption}
+		\caption{Live latency plot.}
 		\label{fig:eval_nonabr_hspa+_h3_waterfall}
 	\end{subfigure}
 	
-	\caption{Caption}
+	\caption{DASH experiment over HTTP/3 with the \texttt{hspa+} network pattern.}
 	\label{fig:eval_nonabr_hspa+_h3}
 \end{figure}
 
@@ -888,7 +888,7 @@ The buffer health plot in Figure \ref{fig:eval_abr_dashjs} shows that with this 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_abr_dash_dynamic.png}
-    \caption{Caption}
+    \caption{Buffer health plot of an ABR DASH experiment with default configuration over HTTP/3 with the \texttt{lte} network pattern.}
     \label{fig:eval_abr_dashjs}
 \end{figure}
 
@@ -912,7 +912,7 @@ Figure \ref{fig:eval_abr_hls} shows the buffer health plot of an experiment run 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/eval_abr_spike_hls.png}
-    \caption{Caption}
+    \caption{HLS experiment over HTTP/3 with the \texttt{spike} network pattern.}
     \label{fig:eval_abr_hls}
 \end{figure}
 
