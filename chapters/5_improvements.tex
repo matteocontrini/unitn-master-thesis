@@ -249,9 +249,9 @@ In a live stream, when a video segment has no chance of being loaded in time for
 
 In HTTP/3, this can be done by aborting the HTTP request, an action that in practice resets the underlying QUIC stream. Resetting a stream means sending a frame of type \texttt{RESET\_STREAM} and immediately closing the stream, also stopping the transmission of the data, if any.
 
-In hls.js, video segments are downloaded sequentially, one at a time. Therefore, we can always look at the current segment and estimate whether the segment will not arrive on time. This is somewhat similar to the \texttt{\_abandonRulesCheck} that we mentioned in \ref{sec:improvements/hlsjs}. That method is called by a JavaScript interval every 100 milliseconds and evaluates whether the current segment is taking too long to load.
+In hls.js, video segments are downloaded sequentially, one at a time. Therefore, we can always look at the current segment and estimate whether the segment will not arrive on time and cancel the download if needed. This is somewhat similar to what the \texttt{\_abandonRulesCheck} does, which we mentioned in Section \ref{sec:improvements/hlsjs}. The \texttt{\_abandonRulesCheck} method is called by a JavaScript interval every 100 milliseconds and evaluates whether the current segment is taking too long to load. If so, it will abort the load of the segment.
 
-In our case, as a first attempt we implemented an even simpler mechanism that simply checks whether we are about to reach the end of the video buffer. We therefore modified the hls.js source code and specifically the \texttt{AbrController}. We added a new periodic timer for a function named \texttt{fillerCheck}, which calculates how much time is left in the buffer.
+For our scenario, we needed to implement something similar. As a first attempt we implemented an simpler mechanism that simply checks whether we are about to reach the end of the video buffer. We therefore modified the hls.js source code and specifically the \texttt{AbrController}. We added a new periodic timer for a function named \texttt{fillerCheck}, which calculates how much time is left in the buffer.
 
 \begin{minted}[frame=single]{ts}
 const bufferInfo = BufferHelper.bufferInfo(
@@ -260,18 +260,25 @@ const bufferInfo = BufferHelper.bufferInfo(
     config.maxBufferHole
 );
 
-const distanceToEndOfBuffer = bufferInfo.len;
+const bufferLength = bufferInfo.len;
 const nextFragmentOffset = frag.start - bufferInfo.end;
 \end{minted}
 
-The \texttt{distanceToEndOfBuffer} is the buffer length, or the seconds of media data currently contained in the buffer. Obviously, if no data is appended to the buffer it will decrease at every tick of the timer.  The \texttt{nextFragmentOffset} is the time difference between the end of the buffer and the start of the fragment. This is used to understand whether the fragment currently being loaded is the next one. Ideally, the difference should be zero, but timestamps are not always that precise so we use a tolerance threshold.
+The \texttt{bufferLength} is self-explanatory: it corresponds to the seconds of media data currently in the buffer between the current video timestamp and the end of the buffer. Obviously, if no data is appended to the buffer the length will decrease at every tick of the timer. The \texttt{nextFragmentOffset} is the time difference between the end of the buffer and the start of the fragment. This is used to understand whether the fragment currently being loaded is actually the one immediately following the end of the buffer. Ideally, the difference should be zero, but timestamps are not always that precise so we use some tolerance (specifically \texttt{maxBufferHole}).
 
-When the above condition is met and the \texttt{distanceToEndOfBuffer} is less than a threshold, we make the decision to abort the segment load. The threshold was set by default to 200 milliseconds (it must be considered that the tick interval is 100 milliseconds), but it is configurable. One thing that the implementation needs to consider is that the segment loading might be aborted by other rules, for example the \texttt{\_abandonRulesCheck}.
+When the above condition is met and the \texttt{bufferLength} is less than a threshold, we make the decision to abort the segment load. The threshold is set by default to 200 milliseconds (considering the fact that the tick interval is 100 milliseconds), but it is configurable. Another thing that the implementation needs to consider is that the segment loading might be aborted by other rules, for example the \texttt{\_abandonRulesCheck}, and handle that situation.
+
+Upon making the decision to abort the segment loading, we cancel the actual download of the segment file. Since we are in the \texttt{AbrController} and have access to the \texttt{Fragment} being loaded, we can directly interact with the \texttt{Loader} instance through the \texttt{loader} property. We therefore modified the \texttt{Loader} interface and defined a new method that mainly performs two operations:
+
+\begin{itemize}
+    \item Cancel the HTTP request, and thus reset the underlying QUIC stream in the case of HTTP/3.
+    \item Emit an event so that other actions can take place, as we will see in the next section.
+\end{itemize}
 
 \section{Generating the filler segment}
 \label{sec:improvements/filler}
 
-When the segment dropping code makes the decision to discard a video segment, the buffer must be filled with some placeholder data in order not to interrupt playback. We call this segment a \textbf{filler segment}.
+When the segment dropping code makes the decision to discard a video segment and interrupts its loading, the buffer must still be filled with some placeholder data in order not to interrupt playback. We call this "fake" segment a \textbf{filler segment}.
 
 To reproduce the Chromium underflow behavior, which consists of showing the last rendered frame on the video canvas while the playback continues with audio, we would need to generate a video segment on the client side by encoding a 2-second video file containing the still picture.
 
@@ -314,7 +321,7 @@ WebAssembly.instantiateStreaming(fetch('/main.wasm'), go.importObject)
 
 Within the Go application entrypoint, namely the \texttt{main.go} file, we can directly interact with the Document Object Model (DOM) of the web page. For example, we can access the \texttt{window} object and manipulate the page contents directly. Alternatively, we can expose functions that can then be called by the JavaScript code by setting them as global variables in the \texttt{window} object.
 
-For example, in our case we expose two functions, \texttt{createInit} and \texttt{createSegment}, as shown in Figure \ref{fig:wasm_go_main}. These functions are then called by the TypeScript code when generating the filler segment data.
+For example, in our case we expose two functions, \texttt{createInit} and \texttt{createFragment}, as shown in Figure \ref{fig:wasm_go_main}. These functions are then called by the TypeScript code when generating the filler segment data.
 
 \begin{figure}[h]
     \centering
@@ -327,7 +334,7 @@ func main() {
 	done := make(chan struct{}, 0)
 	global := js.Global()
 	global.Set("createInit", js.FuncOf(jsCreateInit))
-	global.Set("createSegment", js.FuncOf(jsCreateSegment))
+	global.Set("createFragment", js.FuncOf(jsCreateFragment))
 	<-done
 }
     \end{minted}
@@ -365,7 +372,7 @@ func ExtractSpsPps(bitstream []byte) ([]byte, []byte) {
 
 The init segment can then be built by adding the \texttt{moov} boxes, which contains a single \texttt{trak} with the \texttt{avcC} information. In this step, we also need to assign a time scale to the video track. The time scale represents the number of time units per second, and is then used as a basis for assigning a timestamp to the specific video frame. For example, if we set the time scale to 12800, a typical value, it means that in a 25 fps video file each frame will have a timestamp that is a multiple of 512.
 
-The \texttt{createSegment} function is instead used to create the actual media segment, or fMP4 fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both in seconds.
+The \texttt{createFragment} function is instead used to create the actual media segment, or fMP4 fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both in seconds.
 
 In the actual implementation, we must create another fragmented MP4 file instance and only add one fragment to it. Since the Annex B packetization format is incompatible with MP4, we must first convert the byte stream to NALU samples. The library \texttt{mp4ff} provides us with an helper function to do this.
 
@@ -393,12 +400,37 @@ frag.AddFullSample(sample)
     \label{fig:wasm_go_fragment}
 \end{figure}
 
+\section{Discontinuity handling in hls.js}
+\label{sec:improvements/discontinuities}
+
+As mentioned above, when the \texttt{AbrController} of hls.js decides that the segment loading should be aborted and the segment replaced with a filler segment, according to our implementation, the loader implementation will invoke a callback.
+
+This callback is handled in the \texttt{FragmentLoader} class of hls.js, which is an abstraction that coordinates the lifecycle of the actual loaders, whenever the \texttt{StreamController} decides that a new segment must be loaded. The \texttt{FragmentLoader} is therefore the place where the WASM functions \texttt{createInit} and \texttt{createFragment} are called to produce the new fragment.
+
+Once the generated fragment data is ready, the \texttt{FragmentLoader} will signal to the \texttt{StreamController} that the segment loading has been completed. The data will then be passed to the \textbf{transmuxer}, which is again an abstraction that coordinates the demuxer and remuxer implementations. In this case, the data is already in the fMP4 format so the transmuxer is a passthrough remuxer.
+
+One important detail that is crucial for the solution to work is making sure that the remuxer knows that there was a discontinuity, and therefore emit the new initialization segment. The transmuxer bases this decision on the following logic, which is a snippet from the \texttt{TransmuxerInterface} class:
+
+\begin{minted}[frame=single]{ts}
+const initSegmentChange !(
+    lastFrag && frag.initSegment?.url === lastFrag.initSegment?.url
+);
+\end{minted}
+
+Basically, the transmuxer relies on the URL of the init segment to decide whether it changed with respect to the previous fragment. Therefore, when in the \texttt{FramentLoader} we assign the initialization data to the fragment we must also change its URL. In our implementation, we simply replace the URL with a random string.
+
+\begin{minted}[frame=single]{ts}
+const url = Math.random().toString();
+frag.initSegment = new Fragment(PlaylistLevelType.MAIN, url);
+frag.initSegment.data = initData;
+\end{minted}
+
+In this way, every time there is a filler segment, the transmuxer session will be reset and a new initialization segment will be emitted and appended to the MSE \texttt{SourceBuffer}. The same will happen with the next segment.
 
 
 
 
 
-% TODO: hls.js internals
 
 % TODO: webcodecs
 
