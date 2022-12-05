@@ -374,7 +374,7 @@ The init segment can then be built by adding the \texttt{moov} boxes, which cont
 
 The \texttt{createFragment} function is instead used to create the actual media segment, or fMP4 fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both in seconds.
 
-In the actual implementation, we must create another fragmented MP4 file instance and only add one fragment to it. Since the Annex B packetization format is incompatible with MP4, we must first convert the byte stream to NALU samples. The library \texttt{mp4ff} provides us with an helper function to do this.
+In the actual implementation, we must create another fragmented MP4 file instance and only add one fragment to it. Since the Annex B packetization format is incompatible with MP4, we must first convert the byte stream to NALU packets. The library \texttt{mp4ff} provides us with an helper function to do this.
 
 We then need to add the video frames to the segment. In our case, we have a single frame which we will put in an MP4 sample with a duration of 2 seconds. Note that the timestamp and duration need to be expressed in terms of the time scale, as mentioned before. Figure \ref{fig:wasm_go_fragment} shows a simplified piece of code that creates the sample and adds it to the fragment.
 
@@ -417,7 +417,7 @@ const initSegmentChange !(
 );
 \end{minted}
 
-Basically, the transmuxer relies on the URL of the init segment to decide whether it changed with respect to the previous fragment. Therefore, when in the \texttt{FramentLoader} we assign the initialization data to the fragment we must also change its URL. In our implementation, we simply replace the URL with a random string.
+Basically, the transmuxer relies on the URL of the init segment to decide whether it changed with respect to the previous fragment. Therefore, when in the \texttt{FramentLoader} we assign the initialization data to the fragment we must also change its URL. In our implementation, we simply replace the URL with a random string, since it is not actually used anywhere.
 
 \begin{minted}[frame=single]{ts}
 const url = Math.random().toString();
@@ -427,11 +427,90 @@ frag.initSegment.data = initData;
 
 In this way, every time there is a filler segment, the transmuxer session will be reset and a new initialization segment will be emitted and appended to the MSE \texttt{SourceBuffer}. The same will happen with the next segment.
 
+\section{Encoding the filler segment with WebCodecs}
+\label{sec:improvements/webcodecs}
+
+In Section \ref{sec:improvements/filler}, we explained how the initial implementation only uses a static filler segment with no actual video content. However, it is possible to actually encode the video segment in the browser through JavaScript code, thanks to the WebCodecs API, and make its content dynamic.
+
+WebCodecs is a set of browser APIs that provide high-level methods to encode and decode video and audio content in the browser. The specification is still a draft, but is already implemented and enabled by default in Chromium, and therefore all Chromium-based browsers, since the end of 2021. These browsers represent more than 70\% of the global web users, at the time of writing. Safari also enabled WebCodecs support by default in the Technical Previews of the browser, in November 2022.\footnote{\url{https://caniuse.com/webcodecs}} Firefox still does not have support for WebCodecs but is in the process of implementing it.\footnote{\url{https://bugzilla.mozilla.org/show_bug.cgi?id=1746557}}
+
+With WebCodecs, we can encode video frames and produce a raw bitstream as an output. The codecs that can be used depend on which encoders are included and distributed with the browser build. For example, Google Chrome always ships with an H.264 encoder. WebCodecs only takes care of encoding and decoding media data but does not handle muxing or demuxing.
+
+There are several classes that are part of WebCodecs. For our use case, we are interested in the \texttt{VideoEncoder} and \texttt{VideoFrame} classes. Individual video frames can be created using the \texttt{VideoFrame} constructor, from multiple types of sources, and are then fed into an instance of the \texttt{VideoEncoder}, one at a time.\cite{webcodecs}
+
+% webcodecs diagram
+
+In our implementation, the \texttt{VideoFrame} is constructed from an HTML \texttt{canvas}, which is an element with a predefined size on which an image can be drawn. Once we have the canvas, the \texttt{VideoFrame} is created like this:
+
+\begin{minted}[frame=single]{js}
+const frame = new VideoFrame(canvas, {
+    timestamp: frag.start,
+});
+\end{minted}
+
+To encode the frame, we first need to create a \texttt{VideoEncoder} instance specifying a codec configuration supported by the browser. Unfortunately, it is not possible to obtain a list of supported configurations; therefore, a strategy could be to make multiple attempts until a working configuration is found. The async static method \texttt{VideoEncoder.isConfigSupported(config)} allows to check whether the input configuration is supported.
+
+The code example in Figure \ref{fig:webcodecs_videoencoder} shows how a \texttt{VideoEncoder} instance can be configured. In this case, the following options are specified:
+
+\begin{itemize}
+    \item \textbf{Codec}: a string that defines which codec should be used for encoding.
+    \begin{itemize}
+        \item The characters before the dot define the name of the codec, as specified by the WebCodecs Codec Registry.\cite{webcodecs_registry} For example, in \texttt{avc1.64001f} the string \texttt{avc1} refers to AVC/H.264.
+        \item The suffix of the string is specific to the coding format and contains information such as profile, level, bit depth, etc., that are needed by the decoder. In the case of H.264, the six characters are in hexadecimal format: the first two characters refer to the profile (in the example, \texttt{64} corresponds to \texttt{High}), while the last two declare the level (in the example, \texttt{1f} corresponds to Level 3.1).
+    \end{itemize}
+    \item \textbf{Width and height}: the resolution of the output video.
+    \item \textbf{Bitrate}: the target average bitrate to use for encoding.
+    \item \textbf{Framerate}: the number of frames per second of the output video.
+    \item \textbf{AVC} contains H.264-specific options. In this case, we are asking the encoder to return a stream in the Annex B format.
+\end{itemize}
+
+There are also options to control whether \textbf{hardware acceleration} should be preferred if available and whether to \textbf{optimize for low latency}.
+
+\begin{figure}
+    \centering
+    \begin{minted}[frame=single,linenos]{js}
+const codec = 'avc1.64001f';
+const width = 1280;
+const height = 720;
+const birate = 3_000_000;
+const framerate = 25;
+
+const config = {
+    codec,
+    width,
+    height,
+    bitrate,
+    framerate,
+    avc: { format: 'annexb' as AvcBitstreamFormat },
+};
+
+const encoder = new VideoEncoder(init);
+encoder.configure(config);
+\end{minted}
+    \caption{Caption}
+    \label{fig:webcodecs_videoencoder}
+\end{figure}
+
+Encoding complex video sequences with \texttt{VideoEncoder} requires careful consideration of the rate with which frames should be provided to the encoder, but in our case we just need to encode a single frame, so the implementation is simpler. The encoding of a frame can be started with the following function call:
+
+\begin{minted}[frame=single]{js}
+encoder.encode(frame);
+\end{minted}
+
+In these code samples, error handling and proper management of the resources lifecycle are purposely omitted.
+
+When a newly encoded video chunk is available, a callback defined as a property of the \texttt{init} object passed to the \texttt{VideoEncoder} is invoked. All the data required by the decoder, including the SPS and PPS metadata, are included in the provided bitstream in the Annex B format as specified in the encoder configuration.
+
+As mentioned above, the video frame can be created starting from a 2D \texttt{canvas} that can contain any picture. If we want to create a video segment made of a still picture of the last frame shown on the screen, we can do that with the \texttt{canvas} API. The following code block shows how we can draw the current image render in a \texttt{video} element on a \texttt{canvas}.
+
+\begin{minted}[frame=single]{js}
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+\end{minted}
+
+Note that the source image resolution might not correspond to the one of the \texttt{canvas}, therefore we must specify the destination dimensions when calling the \texttt{drawImage} function.
 
 
-
-
-
-% TODO: webcodecs
-
+% experimental results
 
