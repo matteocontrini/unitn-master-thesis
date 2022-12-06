@@ -509,8 +509,27 @@ const ctx = canvas.getContext('2d');
 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 \end{minted}
 
-Note that the source image resolution might not correspond to the one of the \texttt{canvas}, therefore we must specify the destination dimensions when calling the \texttt{drawImage} function.
+Note that the source image resolution might not correspond to the one of the \texttt{canvas}, therefore we must specify the destination dimensions when calling the \texttt{drawImage} function so that the picture is scaled correctly.
+
+Note that while the filler segment can in theory be of any resolution independently from the current ABR level in our implementation we try to match the expected resolution.
+
+\section{Changes to the testbed}
+\label{sec:improvements/newtestbed}
+
+In the previous sections, we introduced how an alternative user experience for live streaming can be built, taking advantage of multiple techniques such as giving priority to audio segments, dropping segments and generating filler segments on the fly. To test and integrate the solution with the testbed, we need to make some changes to it.
+
+First, we must swap the hls.js implementation with our modified version. Since we are building the application with \texttt{Vite}, which bundles the dependencies declared in the \texttt{package.json} file, we can replace the version of the hls.js library that we want to pull with a local module or a remote repository. In our case, we chose to fork the hls.js repository on GitHub so that \texttt{npm} can pull the modified library from there.
+
+For WebAssembly to work, the initialization code mentioned in Section \ref{sec:improvements/muxing} must be executed. This code can be included in two ways: through the JavaScript code of the hls.js library, or directly in the HTML page of the testbed frontend. In the second case, we must modify the testbed to include the WebAssembly initialization.
+
+If audio prioritization is not integrated directly in the hls.js fork, the HTTP loader must be overridden, as seen in Section \ref{sec:improvements/priority}. Finally, for a proper analysis of the performance of the solution, it would be useful to know when a segment was dropped and replaced with a filler. The stats collector on both the frontend and the backend then needs to be updated to collect this information.
+
+\section{Experimental results}
+\label{sec:improvements/results}
+
+In this section, we analyze some results that we obtained with the modified testbed and observe whether the solution indeed produces a better user experience.
 
 
-% experimental results
+
+
 
