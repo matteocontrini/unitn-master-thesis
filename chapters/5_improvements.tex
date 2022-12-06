@@ -529,7 +529,42 @@ If audio prioritization is not integrated directly in the hls.js fork, the HTTP 
 
 In this section, we analyze some results that we obtained with the modified testbed and observe whether the solution indeed produces a better user experience.
 
+Figure \ref{fig:filler1} shows the buffer health plot for an experiment with the modified hls.js library. The protocol is HTTP/3 in order to be able to use priorities and the network pattern is \texttt{spike}, the one that we used in previous section and showed unideal results with existing solutions.
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{res/impr_hls_filler.png}
+    \caption{Caption}
+    \label{fig:filler1}
+\end{figure}
 
+As we can see, the playback stalls have been completely removed. Playback is not interrupted because there is always some audio in the buffer to play. The black areas (TODO) refer to the segments that have been dropped and replaced with a filler segment.
+
+In Figure \ref{fig:filler2} we can also see the live latency and the waterfall. It is clear that with this solution the live latency stays stable even during the congestion periods. In the waterfall diagram, we can see which segments are discarded, represented in black.
+
+\begin{figure}[h]
+	\centering
+	
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/impr_hls_filler_latency.png}
+		\caption{Live latency plot. TODO: remove the spike}
+		\label{fig:filler2_latency}
+	\end{subfigure}%
+	~ 
+	\begin{subfigure}[t]{0.45\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{res/impr_hls_filler_waterfall.png}
+		\caption{Waterfall diagram.}
+		\label{fig:filler2_waterfall}
+	\end{subfigure}
+	
+	\caption{Caption}
+	\label{fig:filler2}
+\end{figure}
+
+Note that the bandwidth drop in the \texttt{spike} pattern is quite aggressive and in general shows very low bandwidth, so the fact that five consecutive segments are dropped is somehow expected. As mentioned in previous sections, running the experiment multiple times results in slightly different results.
+
+However, there is still room for improvement. For example, the discarding of the segment should free up the bandwidth needed for loading the next segment, but we see that this is not the case with this particular configuration. In the final chapter, we will propose some ideas that might be worth investigating in the future to further improve the solution.
 
 
