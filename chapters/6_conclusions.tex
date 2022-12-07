@@ -1,0 +1,30 @@
+\chapter{Conclusions}
+\label{cha:conclusions}
+
+In this thesis, we focused on the topic of \textbf{live video streaming over HTTP}, specifically low-latency streaming. We analyzed how existing protocols behave in realistic scenarios and then proposed some improvements that we believe produce an overall better user experience.
+
+To properly analyze how popular streaming technologies work, we built a custom \textbf{testbed} that makes it possible to execute emulated experiments in a predictable environment. The testbed is based on the ComNetsEmu emulator and takes advantage of a headless Chromium instance to render a video player in a web page. We implemented support for the two main live streaming protocols, namely \textbf{Apple HLS} and \textbf{MPEG-DASH}, through the JavaScript libraries hls.js and DASH.js. One important feature of the testbed is the ability to apply custom network patterns, which allows us to emulate networks with unstable throughput, latency or reliability.
+
+With this testbed, we were able to collect important events and metrics related to the playback of low-latency streams. This data was then analyzed and plotted, allowing us to better observe and compare the behavior of each streaming setup and configuration.
+
+While running and executing experiments, we discovered that live streaming over HTTP/3 tends to show a suboptimal behavior that was not observed with HTTP/1.1 and HTTP/2. In particular, the default prioritization of HTTP requests tends to give more priority to video segments than to audio, without taking into consideration that audio segments are always much smaller than video and could benefit from being loaded earlier.
+
+With this in mind, we tried to implement a modified version of hls.js that tries to resemble the user experience of linear TV channels in traditional broadcasting mechanisms. In those scenarios, when the signal is not good enough, video or audio playback will get stuck briefly but will not cause an increase in latency. To do that, we took advantage of HTTP/3 and experimented with ways to tweak the \textbf{priorities} given to requests, so that audio is prioritized. We then implemented an approach we call \textbf{segment dropping} that consists of canceling the load of a video segment if it does not arrive on time. The missing video segment is then replaced with a \textbf{filler segment}, which we generate on the fly in the frontend with the JavaScript WebCodecs API, also taking advantage of WebAssembly to mux the H.264 bitstream in an fMP4-compliant fragment.
+
+The combination of these approaches makes it possible to greatly reduce the number of playback stalls and provides an overall smoother live streaming user experience. In fact, when the bandwidth suddenly drops and the ABR rate adaptation algorithm is not able to react in time and switch to a lower-quality rendition, our strategy kicks in and avoids playback stalls caused by missing video. Since the (small) audio segments are prioritized, audio is expected to be always available and is thus always playing, even when the network is congested and no video is available. The final result is that the live latency of the stream does not increase in case of congestion, which is the result that we wanted to achieve.
+
+\section{Future work}
+\label{sec:conclusions/future}
+
+Although the solution we implemented in Section TODO showed some interesting results, there are a few aspects of the implementation that could be further studied.
+
+For example, we tested the solution with a specific configuration and set of software pieces. Clearly, they are not the only possible option. For example, the suboptimal prioritization behavior of HTTP/3 that we observed in Section \ref{sec:eval/non-abr/h3-behavior} probably depends on the scheduling strategy of the specific implementation of the HTTP server. In this testbed, we made the choice to use the \texttt{h2o} web server, but as we mentioned there are many HTTP/3 implementations and they could show different behaviors. This is something worth investigating.
+
+Similarly, the testbed was built with Chromium as a web browser, but, as we mentioned, the solution can work on other browsers as well. A possible improvement is therefore to add support for multiple browsers to the testbed. This would also require swapping the Puppeteer library, used to control the browser programmatically, with a more general library that also supports browsers other than Chromium.
+
+With respect to the actual quality of experience provided by the solution we implemented, we noticed that in the case of sudden and substantial drops in bandwidth there could be several seconds in which the video segment cannot be downloaded, even if the segment dropping should help in freeing bandwidth. For this reason, we believe that the segment dropping approach should be combined with a more aggressive ABR switching algorithm that takes into account that a video segment could not be completely loaded for several seconds.
+
+Another important aspect that would be worth investigating is trying to design and develop a more complex prioritization strategy. For example, the problem of video segments being loaded in time that we mentioned above could be alleviated by giving more priority to "future" segments, while loading the segments in the middle only if there is enough bandwidth left. This would probably require heavy changes to the hls.js stream controller since it does not currently support loading multiple segments of the same track at the same time. Experimenting with different HLS configurations, such as different segment lengths, is also an idea.
+
+Finally, to overcome the requirement of the WebCodecs API being available and supporting the required encoder configuration, future work could investigate the feasibility of implementing a simplified version of an H.264 encoder in the browser. This implementation could take advantage of the possibilities offered by WebAssembly and provide an optimized way to encode a single I-frame on the fly without the overhead of a complete video encoder.
+
