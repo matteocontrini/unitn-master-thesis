@@ -119,7 +119,7 @@ The structure of a GOP can be summarized as a string sequence, like \texttt{IBBP
 	
 	\includegraphics[width=0.8\textwidth]{res/gop2.png}
 	
-	\caption{Typical GOP structure, \texttt{M=3, N=12}.}
+	\caption{Typical GOP structure, \texttt{M=3, N=12}.\cite{h264}}
 	\label{fig:codec_gop2}
 \end{figure}
 
@@ -144,7 +144,7 @@ The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018)
 	
 	\includegraphics[width=0.8\textwidth]{res/h264_scope.png}
 	
-	\caption{The scope of the H.264 standard.}
+	\caption{The scope of the H.264 standard.\cite{h264}}
 	\label{fig:h264_scope}
 \end{figure}
 
@@ -168,7 +168,7 @@ Finally, an important part of H.264 is the syntax of the coded bitstream. The H.
 	
 	\includegraphics[width=0.9\textwidth]{res/h264_nalu.png}
 	
-	\caption{H.264 bitstream structure and encapsulation alternatives.}
+	\caption{H.264 bitstream structure and encapsulation alternatives.\cite{h264}}
 	\label{fig:h264_encapsulation}
 \end{figure}
 
@@ -424,7 +424,7 @@ The MPEG-DASH standard also has an extension for low-latency streaming, known as
 \subsection{Common Media Application Format (CMAF)}
 \label{sec:bg/technologies/cmaf}
 
-Before Apple introduced support for \texttt{fMP4} segments in 2016, a common issue for video platforms was that supporting both HLS and DASH required two copies of the same content, one in MPEG-2 TS format and the other in \texttt{fMP4}. This was needed because not all platforms support HLS and vice versa.
+Before Apple introduced support for fMP4 segments in 2016, a common issue for video platforms was that supporting both HLS and DASH required two copies of the same content, one in MPEG-2 TS format and the other in fMP4. This was needed because not all platforms support HLS and vice versa.
 
 This problem led to the proposal and standardization of \textbf{Common Media Application Format} (CMAF), a common specification that defines how media should be packaged and segmented for delivery. Fragmented MP4 is a CMAF-compatible format and since it is supported by both HLS and DASH it can lead to significant savings. Video platforms can, in fact, produce and store a single set of video segment files and deliver them to all devices.\cite{cmaf}
 

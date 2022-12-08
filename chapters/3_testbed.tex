@@ -1,16 +1,16 @@
 \chapter{Testbed setup}
 \label{cha:testbed}
 
-In this section, we will illustrate how we set up a \textbf{testbed} with ComNetsEmu to evaluate the performance of \textbf{low-latency adaptive bitrate live streaming} technologies. The testbed allows to run experiments in different scenarios and configurations, extracting some important metrics and events that are then used for analysis. 
+In this section, we will illustrate how we set up a \textbf{testbed} with ComNetsEmu to evaluate the performance of \textbf{low-latency adaptive bitrate live streaming} technologies. The testbed allows us to run experiments in different scenarios and configurations, extracting some important metrics and events.
 
 We will then use this testbed to evaluate the performance of some existing streaming technologies (Chapter \ref{cha:eval}) and to propose some improvements (Chapter \ref{cha:improvements}).
 
 \section{General architecture}
 \label{sec:testbed/architecture}
 
-The testbed for evaluating the quality of experience (QoE) of live streaming solutions was built with ComNetsEmu. The project was published as an open source project at \url{https://github.com/matteocontrini/live-streaming-testbed}.
+The testbed for evaluating the quality of experience (QoE) of live streaming solutions was built with ComNetsEmu. The project is published as an open source project at \url{https://github.com/matteocontrini/live-streaming-testbed}.
 
-The general architecture of the testbed is shown in Figure X. The topology of the emulated network consists of three hosts (H1, H2, H3) and two switches (S1, S2). The link between the two switches represents an unreliable network such as an Internet access network. When the emulation is run, a series of experiments with different configurations are run, and the link parameters are changed. For example, the bandwidth is varied to emulate a real network with oscillating throughput.
+The general architecture of the testbed is shown in Figure \ref{fig:testbed}. The topology of the emulated network consists of three hosts (H1, H2, H3) and two switches (S1, S2). The link between the two switches represents an unreliable network such as an Internet access network. When the emulation is run, a series of experiments with different configurations are run, and the link parameters are changed. For example, the bandwidth is varied to emulate a real network with oscillating throughput.
 
 \begin{figure}[h]
     \centering
@@ -47,7 +47,7 @@ Before going into the details of how the specific components were developed, it 
 
 To solve this problem, two changes must be applied to the ComNetsEmu \texttt{Vagrantfile}. First, the Vagrant box (the operating system image) must be changed to an image that is built for the ARM architecture. Then, since x86 virtualization software such as VirtualBox cannot be used on ARM systems, a new virtual machine provider must be added. In practice, for Mac systems, this means enabling Parallels Desktop as a virtual machine provider. Figure \ref{fig:vagrantfile} shows how the \texttt{Vagrantfile} of ComNetsEmu was modified for Apple Silicon support.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{minted}[frame=single,linenos,fontsize=\small]{diff}
 diff --git a/Vagrantfile b/Vagrantfile

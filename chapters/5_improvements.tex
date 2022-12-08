@@ -1,18 +1,18 @@
 \chapter{Proposed improvements and results}
 \label{cha:improvements}
 
-In this chapter, we will present some improvements to live streaming protocols and libraries that we believe produce a better overall quality of experience in video streaming. The proposed improvements are based on the findings presented in the previous chapter.
+In this chapter, we will present some \textbf{improvements} to live streaming protocols and libraries that we believe produce a \textbf{better overall quality of experience} in video streaming. The proposed improvements are based on the findings presented in the previous chapter.
 
 Specifically, we will first dive into the adaptation algorithms of DASH.js to assess that the default configuration is not suitable for low-latency live streaming. Then, we will propose a better configuration which also involves writing a custom ABR rule.
 
-We will then look at how we can play with HTTP/3 priorities to give priority to audio segments. We will implement this part with hls.js. To overcome the fact that Chromium's buffer underflow behavior (Section \ref{sec:eval/non-abr/http-versions}) is limited to 3 seconds and that it is not available on other browsers, we will use the \texttt{WebCodecs} API to implement the generation of a "filler" segment for when no video segment is available. This also allows to cancel the loading of the segment when it is too late for it to arrive, therefore saving bandwidth.
+We will then look at how we can take advantage of HTTP/3 features, such as priorities and stream resetting, to implement a new live streaming approach where video playback stalls are avoided if the video buffer is temporarily empty. We will do so with a combination of HTTP prioritization and on-the-fly generation of filler segments on the client side, thanks to WebCodecs API and WebAssembly.
 
-Finally, we will show how this solution produces fewer playback stalls and what possible improvements are left for future work.
+Finally, we will show how this solution produces fewer playback stalls and avoids the increase of live latency in the case of network congestion, providing the overall smoothness of the live streaming user experience.
 
 \section{DASH.js bitrate adaptation algorithm improvements}
 \label{sec:improvements/dashjs}
 
-In Section \ref{sec:eval/abr/dashjs} we have shown how in some cases the default configuration of DASH.js makes the video quality oscillate too frequently with a live stream with low latency. Specifically, Figure \ref{fig:eval_abr_dashjs} represents the buffer health plot, where we can see that in the second half of the experiment the media bitrate chosen by DASH.js frequently changes and most of the time stays at a lower value than it should, even if the network bandwidth is consistently above 8 Mbps.
+In Section \ref{sec:eval/abr/dashjs} we have shown how in some cases the default configuration of DASH.js makes the video quality oscillate too frequently with a low-latency live stream. Specifically, Figure \ref{fig:eval_abr_dashjs} represents the buffer health plot, where we can see that in the second half of the experiment the media bitrate chosen by DASH.js frequently changes and most of the time stays at a lower value than it should, even if the network bandwidth is consistently above 8 Mbps.
 
 The decision on which bitrate should be requested next is the task of the rate adaptation algorithm, which every library typically implements differently. There are in fact many approaches to solving the problem and there is no clear consensus on which is the best.
 
@@ -259,7 +259,7 @@ In practice, implementing the solution means tackling the following points:
 \begin{itemize}
     \item \textbf{Prioritization of requests}: as we have already seen in depth, audio segments and playlists should be prioritized over video.
     \item \textbf{Segment dropping}: when it is too late for a video segment to be useful, we can cancel its download to free bandwidth.
-    \item \textbf{Filler/placeholder segments}: when a segment is dropped, we need to provide a placeholder to the source buffer, which should be generated on the client side in the browser.
+    \item \textbf{Filler segments}: when a segment is dropped, we need to provide a filler or placeholder to the source buffer. This "fake" segment should be generated on the client side in the browser.
 \end{itemize}
 
 \section{Segment dropping}
