@@ -358,7 +358,7 @@ func main() {
 	<-done
 }
     \end{minted}
-    \caption{Caption}
+    \caption{Snippet of a Go application to expose two functions as WebAssembly functions.}
     \label{fig:wasm_go_main}
 \end{figure}
 
@@ -386,7 +386,7 @@ func ExtractSpsPps(bitstream []byte) ([]byte, []byte) {
 	return sps, pps
 }
     \end{minted}
-    \caption{Caption}
+    \caption{Go function showing how to the SPS and PPS NAL units can be extracted for an H.264 bitstream in Annex B format.}
     \label{fig:wasm_go_sps}
 \end{figure}
 
@@ -416,7 +416,7 @@ sample := mp4.FullSample{
 
 frag.AddFullSample(sample)
     \end{minted}
-    \caption{Caption}
+    \caption{Snippet from the Go WASM application showing how to create an fMP4 sample from the input H.264 bitstream.}
     \label{fig:wasm_go_fragment}
 \end{figure}
 
@@ -512,7 +512,7 @@ const config = {
 const encoder = new VideoEncoder(init);
 encoder.configure(config);
 \end{minted}
-    \caption{Caption}
+    \caption{TypeScript code snippet that initializes and configures and instance of the WebCodecs \texttt{VideoEncoder}.}
     \label{fig:webcodecs_videoencoder}
 \end{figure}
 
@@ -559,7 +559,7 @@ Figure \ref{fig:filler1} shows the buffer health plot for an experiment with the
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/impr_hls_filler.png}
-    \caption{Caption}
+    \caption{Buffer health plot for an experiment using the modified hls.js library. The protocol is HTTP/3 and priority is given to audio. The network pattern is \texttt{spike}. Outdated segments are dropped and replaced by the filler segment.}
     \label{fig:filler1}
 \end{figure}
 
@@ -584,7 +584,7 @@ In Figure \ref{fig:filler2} we can also see the live latency and the waterfall. 
 		\label{fig:filler2_waterfall}
 	\end{subfigure}
 	
-	\caption{Caption}
+	\caption{Additional plots for the experiment with modified hls.js version over HTTP/3 with the \texttt{spike} network pattern.}
 	\label{fig:filler2}
 \end{figure}
 
