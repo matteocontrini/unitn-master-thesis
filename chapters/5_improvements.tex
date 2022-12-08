@@ -456,9 +456,14 @@ WebCodecs is a set of browser APIs that provide high-level methods to encode and
 
 With WebCodecs, we can encode video frames and produce a raw bitstream as an output. The codecs that can be used depend on which encoders are included and distributed with the browser build. For example, Google Chrome always ships with an H.264 encoder. WebCodecs only takes care of encoding and decoding media data but does not handle muxing or demuxing.
 
-There are several classes that are part of WebCodecs. For our use case, we are interested in the \texttt{VideoEncoder} and \texttt{VideoFrame} classes. Individual video frames can be created using the \texttt{VideoFrame} constructor, from multiple types of sources, and are then fed into an instance of the \texttt{VideoEncoder}, one at a time.\cite{webcodecs}
+There are several classes that are part of WebCodecs. For our use case, we are interested in the \texttt{VideoEncoder} and \texttt{VideoFrame} classes. Individual video frames can be created using the \texttt{VideoFrame} constructor, from multiple types of sources, and are then fed into an instance of the \texttt{VideoEncoder}, one at a time. The outputs of the \texttt{VideoEncoder} are \texttt{EncodedVideoChunk} instances that together represent the enocded video.\cite{webcodecs}
 
-% webcodecs diagram
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{res/webcodecs.png}
+    \caption{The path to encode a video file with WebCodecs, from a \texttt{Canvas} to the encoded chunks.}
+    \label{fig:webcodecs_diagram}
+\end{figure}
 
 In our implementation, the \texttt{VideoFrame} is constructed from an HTML \texttt{canvas}, which is an element with a predefined size on which an image can be drawn. Once we have the canvas, the \texttt{VideoFrame} is created like this:
 

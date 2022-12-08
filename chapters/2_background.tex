@@ -1,7 +1,7 @@
 \chapter{Background}
 \label{cha:bg}
 
-In this section, we will introduce the main concepts and technologies on which video streaming, and therefore our work, is based. We will start with video compression concepts, going through important concepts such as \textit{Group of Pictures} (GOP), also presenting some popular video codec formats. We will then delve into video container formats, introducing MPEG-2 Transport Stream, MP4 and Fragmented MP4. We will also present how adaptive bitrate streaming works and the main technologies, such as Apple HLS and MPEG-DASH, go through the evolution of HTTP versions (HTTP/3 in particular), and finally briefly introduce the main network emulation tools.
+In this section, we will introduce the main concepts and technologies on which video streaming, and therefore our work, is based. We will start with video compression, going through important concepts such as \textit{Group of Pictures} (GOP), also presenting some popular video codec formats. We will then delve into video container formats, introducing MPEG-2 Transport Stream, MP4 and Fragmented MP4. We will also present how adaptive bitrate streaming works and the main technologies, such as Apple HLS and MPEG-DASH, and go through the evolution of HTTP versions (HTTP/3 in particular). Finally, we will briefly introduce the main network emulation tools.
 
 \section{Video compression concepts}
 \label{sec:bg/compression}
@@ -84,10 +84,6 @@ In general, a hybrid video codec works in three phases:\cite{h264}
 	\label{fig:codec_detailed}
 \end{figure}
 
-%The transform converts the samples into another domain in which they are represented by transform coefficients. The coefficients are quantized to remove insignificant values, leaving a small number of significant coefficients that provide a more compact representation of the residual frame. The output of the spatial model is a set of quantized transform coefficients.
-
-%The parameters of the prediction model, i.e. intra prediction mode(s) or inter prediction mode(s) and motion vectors, and the spatial model, i.e. coefficients, are compressed by the entropy encoder. This removes statistical redundancy in the data, for example representing commonly occurring vectors and coefficients by short binary codes. The entropy encoder produces a compressed bit stream or file that may be transmitted and/or stored. A compressed sequence consists of coded prediction parameters, coded residual coefficients and header information. The video decoder reconstructs a video frame from the compressed bit stream. The coefficients and prediction parameters are decoded by an entropy decoder after which the spatial model is decoded to reconstruct a version of the residual frame. The decoder uses the prediction parameters, together with previously decoded image pixels, to create a prediction of the current frame and the frame itself is reconstructed by adding the residual frame to this prediction.
-
 The output of a hybrid video encoder is a \textit{bit stream} (or \textit{bitstream}), namely a compressed sequence of coded residual coefficients and other parameters. The decoder applies the same process inversely to reconstruct the original video frames, with some approximation.
 
 \subsection{Frame types and GOP}
@@ -136,9 +132,7 @@ It is worth noting that the H.264 standard only defines the format and syntax of
 
 The successor of H.264, first published in 2013, is \textbf{H.265}, also named \textit{High Efficiency Video Coding} (HEVC) or \textit{MPEG-H Part 2}, which provides better compression of 25\% to 50\% better compression at the same bitrate compared to H.264. It is especially suitable for high-resolution content such as 4K UHD, but struggled to reach wide adoption due to the complex and expensive royalties structure that slowed down hardware support.\cite{hevcroyalties}
 
-In competition with the H.26x family of formats, Google released royalty-free \textbf{VP8} in 2008, followed by \textbf{VP9} in 2012. Thanks to Google controlling a large fraction of the browser market share and the YouTube streaming platform, VP9 became a popular alternative to H.264, often delivering better video compression ratios with comparable quality.
-
-% TODO: sources
+In competition with the H.26x family of formats, Google released royalty-free \textbf{VP8} in 2008, followed by \textbf{VP9} in 2012. Thanks to Google controlling a large fraction of the browser market share and the YouTube streaming platform, VP9 became a popular alternative to H.264, often delivering better video compression ratios with comparable quality.\cite{bitmovin}
 
 The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies such as Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{\url{https://aomedia.org/membership/members/}} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content such as 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex, codec implementations are often prohibitively expensive to run in software, thus requiring hardware support. However, having widespread hardware support is an effort that can take quite a few years.\cite{av1}
 
@@ -203,10 +197,7 @@ Two popular container formats used in the context of video streaming are \textbf
 
 MPEG-2 Transport Stream (or \textbf{MPEG-2 TS}), defined by the MPEG-2 Part 1 standard, is a container format originally designed for digital television broadcasting systems. For this reason, it includes features such as error correction and synchronization, providing protection against degraded transmission channels.
 
-A single MPEG-2 Transport Stream can transport multiple programs, for example multiple TV channels. Each program can consist of multiple video and audio streams, known as \textbf{elementary streams}. The coded data for each elementary stream is packetized into PES (Packetized Elementary Stream) packets, each having a fixed length of 188 bytes. The 188 bytes include headers (which transport data like timing information), which is the reason why Transport Stream often has a non-negligible overhead.\cite{mpeg2ts}
-
-% terrible, rewrite
-% https://tsduck.io/download/docs/mpegts-introduction.pdf
+In MPEG-2 TS, a transport stream is composed of multiple programs or services, which could be, for example, multiple TV channels. Each program can consist of multiple video and audio tracks, known as \textbf{elementary streams}, which are multiplexed to compose the transport stream. In each elementary stream, the raw coded data is packetized into packets known as PES packets (Packetized Elementary Stream), each having a fixed length of 188 bytes. The length of the packet includes headers, which transport data such as timing information. Hence, Transport Stream often has a non-negligible overhead.\cite{mpeg2ts}
 
 An H.264 bitstream muxed in an MPEG-2 stream must be in the Annex B format (i.e. with start codes).
 
@@ -216,8 +207,6 @@ An H.264 bitstream muxed in an MPEG-2 stream must be in the Annex B format (i.e.
 MP4 is a container file format based on the \textbf{ISO Base Media File Format} (ISOBMFF). It was extended from Apple QuickTime File Format (\texttt{.mov}) and first published in 2001 as MPEG-4 Part 14.\footnote{The actual box structure is defined in MPEG-4 Part 12 (ISOBMFF).}\cite{mpeg4part12}
 
 In the \textbf{ISOBMFF} format the video and audio bitstreams, such as an H.264-compressed video, are stored as tracks and organized in a \textbf{box structure}. The MP4 format is capable of storing metadata such as video duration and per frame display and decoding timestamps, dealing with issues such as synchronization between tracks and random access (\textit{seeking}) of the media file.
-
-% Video and audio frames are usually interleaved, although it is possible to generate "flat" MP4 files where tracks are organized sequentially.
 
 Some ISOBMFF box (or atom) types that are particularly relevant are:
 
@@ -292,8 +281,6 @@ For some use cases, such as adaptive video streaming, a more suitable structure 
 \label{sec:bg/abr}
 
 In a typical live streaming architecture, we can generally distinguish three main parts: \textbf{ingestion}, \textbf{transcoding and packaging}, and \textbf{distribution}.
-
-% TODO: architecture diagram
 
 \textbf{Ingestion} refers to the process of making the input feed available to the transcoder server for processing. Often, this means having a client push the stream through an ingestion protocol such as \textbf{Real Time Messaging Protocol} (RTMP) or \textbf{Secure Reliable Transport} (SRT). In some cases, a more suitable approach is a pull-based one, where it is the backend system's responsibility to "pull" the video and audio streams from another system and pass them onto the pipeline.
 
@@ -504,14 +491,25 @@ In HTTP/2, clients establish a \textbf{single TCP connection} with the server. T
 
 An important feature of HTTP/2 is \textbf{stream prioritization}. Since multiple streams can co-exist on the same TCP connection, there was the need for a mechanism to make better decisions on which stream goes first or is given priority. HTTP/2 allows clients to assign a \textbf{weight} between 1 and 256 to each stream, where a higher number means higher priority. In addition, clients can specify that a stream is dependent on another stream through its ID, effectively creating a \textbf{dependency tree}. The structure of the tree, and therefore the order in which requests are responded, is defined by the dependency relationships, while the division of resources between a set of "children" streams is determined by their weights.
 
-The dependency tree approach of HTTP/2 is very flexible and allows clients to implement different \textbf{prioritization strategies}, with widely different performance results. In \cite{http2pri}, Wijnants et al. examined the behavior of the main browsers to determine which prioritization scheme they implemented. It turns out that only Mozilla Firefox chose to adopt a complex tree-based strategy. Google Chrome implements a much simpler sequential FCFS approach based on dynamic weights (giving more weight to requests deemed more important according to heuristics), Microsoft Edge (legacy) uses a naive round-robin strategy with no weights at all, while Safari follows a weighted round-robin scheme. Surprisingly, the experimental results showed superior performance when using the relatively simple strategy implemented by Chrome.
+The dependency tree approach of HTTP/2 is very flexible and allows clients to implement different \textbf{multiplexing} or \textbf{prioritization strategies}, with widely different performance results. In \cite{http2pri}, Wijnants et al. examined the behavior of the main browsers to determine which prioritization scheme they implemented. It turns out that only Mozilla Firefox chose to adopt a complex tree-based strategy. Google Chrome implements a much simpler sequential FCFS approach based on dynamic weights (giving more weight to requests deemed more important according to heuristics), Microsoft Edge (legacy) uses a naive round-robin strategy with no weights at all, while Safari follows a weighted round-robin scheme. Surprisingly, the experimental results showed superior performance when using the relatively simple strategy implemented by Chrome.
 
-% TODO: diagrams
-% https://speeder.edm.uhasselt.be/www18/files/h2priorities_mwijnants_www2018.pdf
-% https://speeder.edm.uhasselt.be/www18/files/h2priorities_mwijnants_www2018_presentation.pdf
-% https://speeder.edm.uhasselt.be/www18/
-% https://quic.edm.uhasselt.be/files/fosdem.pdf
-% https://youtu.be/nH4iRpFnf1c?t=440
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{res/marx_h2pri_browsers.png}
+    \caption{Different HTTP/2 multiplexing strategies implemented by browsers. Courtesy of Robin Marx.\protect\footnotemark}
+    \label{fig:marx1}
+\end{figure}
+
+\footnotetext{\url{https://quic.edm.uhasselt.be/files/fosdem.pdf}}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{res/marx_h2pri_tree.png}
+    \caption{Graphical representation of the HTTP/2 dependency trees in the main web browsers. Courtesy of Robin Marx.\protect\footnotemark}
+    \label{fig:marx2}
+\end{figure}
+
+\footnotetext{\url{https://quic.edm.uhasselt.be/files/fosdem.pdf}}
 
 In HTTP/2, the use of HTTPS is mandatory, making the protocol more secure by design. HTTP/2 also achieves better performance by compressing headers, thanks to the \texttt{HPACK} compression algorithm. Finally, a feature known as \textbf{HTTP/2 Server Push} allows the server to push additional unsolicited content in response to HTTP requests, theoretically reducing the need for additional round-trip times to request resources.
 
@@ -539,7 +537,14 @@ More in depth, the following are some main conceptual differences between HTTP/2
     \item HTTP/2 \textbf{stream prioritization} is replaced by a simpler priority mechanism, implemented at the HTTP/3 level. QUIC does not have stream prioritization.
 \end{itemize}
 
-% TODO: stack diagrams https://github.com/rmarx/h3-protocol-stack/blob/main/README.md
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{res/protocol-stack-h2-h3-improved-readability.png}
+    \caption{Comparison of HTTP/2 and HTTP/3 protocols stack. Courtesy of Robin Marx.\protect\footnotemark}
+    \label{fig:my_label}
+\end{figure}
+
+\footnotetext{https://github.com/rmarx/h3-protocol-stack}
 
 The \textbf{head-of-line blocking} issue caused by TCP in HTTP/2 is not present in HTTP/3, since streams are now a concept of the transport layer. Unlike TCP, in fact, QUIC does not see a single byte stream but multiple streams that can be treated independently (with respect to retransmissions, for example). However, if the scheduling strategy implemented by the server is sequential, there could still be head-of-line blocking because the slow transmission of a stream would block the other ones. The multiplexing scheduler depends on the server implementation and is often round-robin, according to the experiments run by Marx et al.\cite{quicdiversity}
 
