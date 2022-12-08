@@ -131,11 +131,13 @@ This tweaked configuration, consisting in forcing the \texttt{THROUGHPUT} strate
 
 During the development of these improvements to DASH.js, we had the opportunity to take a deeper look at the internals and architecture of DASH.js. Unfortunately, we have found that most parts of the code are poorly documented and sometimes even have incomplete TypeScript types definitions. Also, our impression was that it was harder to understand how to extend the library and add new components. One of the reasons is that the library is using plain JavaScript, making it harder to have proper IDE support and type safety.
 
-This led us to switch to hls.js for the rest of our work. Unlike DASH.js, hls.js is written in TypeScript and seems to be better documented. For example, the general architecture and design of the library is explained in detail in the official documentation.\footnote{\url{https://github.com/video-dev/hls.js/blob/master/docs/design.md}}
+This led us to switch to hls.js for the rest of our work. Unlike DASH.js, hls.js is written in TypeScript and is generally be better documented. For example, the general architecture and design of the library is explained in detail in the official documentation.\footnote{\url{https://github.com/video-dev/hls.js/blob/master/docs/design.md}}
 
 Unlike DASH.js, hls.js does not use a hybrid approach for the adaptation algorithm. Instead, it uses a standard \textbf{Exponential Weighted Moving Average} (EWMA) bandwidth estimator, which tracks bandwidth samples to produce an estimate of the available network bandwidth. This approach is used for both on-demand and live content, although with different configuration parameters for the EWMA computation.
 
 In addition to the bandwidth estimate, hls.js also has an \textbf{abandon rule} similar to the one of DASH.js. This rule is implemented in the \texttt{\_abandonRulesCheck} method of the \texttt{AbrController} class and is periodically called by a timer. The method calculates the download rate of the current segment and estimates whether the segment will be loaded quickly enough to prevent buffer underflow, based on the estimate of bandwidth. If necessary, the rule will then find a quality level whose bitrate allows the segment to be loaded before buffer starvation, with a safety factor of 80\%. If no level matches this condition, the lower bitrate is chosen.
+
+While we were inspecting the source code that makes the request abandoning feature possible, we found a bug that prevented the check from running in some cases. We therefore reported the issue to the hls.js developers.\footnote{\url{https://github.com/video-dev/hls.js/issues/5094}}
 
 \section{Adding priority}
 \label{sec:improvements/priority}
@@ -226,13 +228,33 @@ The behavior that we have shown in the previous section derives from the Chromiu
 
 Another limitation is that in Chromium the playback stall is avoided only for three seconds. Ideally, we would like to have more control on how and when this happens, and on all browsers.
 
-The final objective is to build a new user experience that involves less playback stalls. Usually, when a live stream struggles to adapt to network conditions, the user is used to seeing both and audio stop for a while during rebuffering. When this happens, latency tends to grow and the playback will lag behind with respect to the live edge. Consequently, users will receive the action late possibly by even tens of seconds.
+The final objective is to build \textbf{a user experience with fewer playback stalls}. Usually, when a live stream struggles to adapt to network conditions the viewer is used to see both and audio stuck for a while during rebuffering. When this happens, latency tends to grow and playback lags behind the edge of the live event. As a consequence, users will perceive the action late, possibly by even tens of seconds.
 
-However, this kind of live experience is different from what users are used to from other broadcasting systems. For example, digital terrestrial or satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
+This kind of experience is \textbf{different in comparison to other broadcasting systems}. For example, digital terrestrial and satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
 
-Since we cannot think of completely eliminating rebuffer events, we can instead try to implement a solution that tries to resemble the linear TV experience that viewers are already used to. Although subjective, it would likely result in a better Quality of Experience (QoE).
+Adaptive streaming research has been mostly focused on avoiding empty buffers as much as possible, although in low-latency scenarios entirely avoiding rebuffering is a very hard task. Instead, we can try to implement a solution that tries to resemble the linear TV experience that viewers are already used to. Although subjective, it would likely result in a better Quality of Experience (QoE).
 
-In practice, this means tackling the following points:
+\subsection{Related works}
+\label{sec:improvements/ux/related}
+
+There are a few proposals that in the past few years attempted to provide an alternative solution to the problem of video transmission over unreliable networks.
+
+In 2019, the authors of \cite{framediscarding} proposed an approach called \textbf{frame discarding}. The idea was to exploit HTTP/2 streams to transmit each individual video frame independently. When network conditions become adverse, some carefully selected video frames are discarded and their download is aborted through the stream resetting feature of HTTP/2, saving bandwidth and at the same time preserving playback continuity.
+
+In 2021, Facebook presented a draft for \textbf{Reliable (Unreliable) Streaming Protocol} (RUSH), which uses the QUIC protocol to provide a replacement for RTMP for video ingestion on unreliable networks. Video frames are transmitted in independent QUIC streams, providing a way to stop retransmissions if a video frame is not fully delivered on time.\cite{rush}
+
+In 2022, Twitch, the video streaming platform, submitted a draft RFC for \textbf{Warp}, a new protocol for segmented media delivery over QUIC. Warp transmits one video segment per QUIC stream and gives priority to newer video segments and to the audio track. Video segments that cannot be delivered in time are reset at the QUIC stream level to free bandwidth, an approach that Twitch calls \textbf{segment truncation}. Warp can be used for video delivery in the browser thanks to WebTransport, an abstraction of QUIC, although at the time of writing the draft proposal does not include adaptive bitrate support.\cite{warp}
+
+Finally, a new IETF working group, \textbf{Media Over QUIC}, is evaluating how to consolidate video streaming protocols that work over QUIC in a single standardized solution.\footnote{https://datatracker.ietf.org/wg/moq/about/}
+
+\subsection{Implementation roadmap}
+\label{sec:improvements/ux/roadmap}
+
+To our knowledge, the solutions mentioned above are the only attempts that have been publicly proposed to tackle the issue of video streaming from a different perspective.
+
+In this work, we make an attempt to implement a approach similar to the one proposed by Warp, but over HTTP and using existing ABR protocol. Specifically, we modify the hls.js library and take advantage of new HTTP features made available by HTTP/3.
+
+In practice, implementing the solution means tackling the following points:
 
 \begin{itemize}
     \item \textbf{Prioritization of requests}: as we have already seen in depth, audio segments and playlists should be prioritized over video.
