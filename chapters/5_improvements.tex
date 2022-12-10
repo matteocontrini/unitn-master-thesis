@@ -3,18 +3,18 @@
 
 In this chapter, we will present some \textbf{improvements} to live streaming protocols and libraries that we believe produce a \textbf{better overall quality of experience} in video streaming. The proposed improvements are based on the findings presented in the previous chapter.
 
-Specifically, we will first dive into the adaptation algorithms of DASH.js to assess that the default configuration is not suitable for low-latency live streaming. Then, we will propose a better configuration which also involves writing a custom ABR rule.
+Specifically, we will first dive into the adaptation algorithms of \dashjs{} to assess that the default configuration is not suitable for low-latency live streaming. Then, we will propose a better configuration which also involves writing a custom ABR rule.
 
-We will then look at how we can take advantage of HTTP/3 features, such as priorities and stream resetting, to implement a new live streaming approach where video playback stalls are avoided if the video buffer is temporarily empty. We will do so with a combination of HTTP prioritization and on-the-fly generation of filler segments on the client side, thanks to WebCodecs API and WebAssembly.
+We will then look at how we can take advantage of HTTP/3 features, such as priorities and stream resetting, to implement a new live streaming approach where video playback stalls are avoided if the video buffer is temporarily empty. We will do so with a combination of HTTP prioritization and on-the-fly generation of filler segments on the client side, thanks to WebCodecs API and WebAssembly. For this part, we will modify the \hlsjs{} library.
 
-Finally, we will show how this solution produces fewer playback stalls and avoids the increase of live latency in the case of network congestion, providing the overall smoothness of the live streaming user experience.
+Finally, we will show how the proposed solution produces fewer playback stalls and avoids the increase of live latency in the case of network congestion, with an overall smoother live streaming user experience.
 
-\section{DASH.js bitrate adaptation algorithm improvements}
+\section{\dashjs{} bitrate adaptation algorithm improvements}
 \label{sec:improvements/dashjs}
 
-In Section \ref{sec:eval/abr/dashjs} we have shown how in some cases the default configuration of DASH.js makes the video quality oscillate too frequently with a low-latency live stream. Specifically, Figure \ref{fig:eval_abr_dashjs} represents the buffer health plot, where we can see that in the second half of the experiment the media bitrate chosen by DASH.js frequently changes and most of the time stays at a lower value than it should, even if the network bandwidth is consistently above 8 Mbps.
+In Section \ref{sec:eval/abr/dashjs} we have shown how in some cases the default configuration of \dashjs{} makes the video quality oscillate too frequently with a low-latency live stream. Specifically, Figure \ref{fig:eval_abr_dashjs} represents the buffer health plot, where we can see that in the second half of the experiment the media bitrate chosen by \dashjs{} frequently changes and most of the time stays at a lower value than it should, even if the network bandwidth is consistently above 8 Mbps.
 
-The decision on which bitrate should be requested next is the task of the rate adaptation algorithm, which every library typically implements differently. There are in fact many approaches to solving the problem and there is no clear consensus on which is the best.
+The decision on which bitrate should be requested next is the task of the \textbf{rate adaptation algorithm}, which every library typically implements differently. There are in fact many approaches to solving the problem and there is no clear consensus on which is the best.
 
 The core idea of adaptation algorithms is to choose the best quality level so that the bitrate is lower than the available network bandwidth. There are two main approaches to making this decision:
 
@@ -23,9 +23,9 @@ The core idea of adaptation algorithms is to choose the best quality level so th
     \item \textbf{Buffer-based}: an alternative approach that observes the occupancy of the buffer to determine whether the decision to increase/dicrease the bitrate should be made. This approach avoids the need to keep a bandwidth estimate.
 \end{itemize}
 
-DASH.js uses a combination of these two approaches with a strategy called \texttt{DYNAMIC}, first presented in \cite{dashjs_dynamic}. The \texttt{DYNAMIC} strategy switches between a throughput-based approach, named \texttt{THROUGHPUT}, and a buffer-based approach, \texttt{BOLA}.\cite{bola} The idea of switching between the two is based on the fact that each algorithm works best in different situations. In particular, the throughput-based algorithm performs better when the buffer is low or empty, while \texttt{BOLA} (buffer-based) performs better when the buffer level is sufficiently large.
+\dashjs{} uses a combination of these two approaches with a strategy called \texttt{DYNAMIC}, which was first introduced in \cite{dashjs_dynamic}. The \texttt{DYNAMIC} strategy switches between a throughput-based approach, named \texttt{THROUGHPUT}, and a buffer-based approach, \texttt{BOLA}.\cite{bola} The idea of switching between the two is based on the fact that each algorithm works best in different situations. In particular, the throughput-based algorithm performs better when the buffer is low or empty, while \texttt{BOLA} (buffer-based) performs better when the buffer level is sufficiently large.
 
-The algorithm that switches between \texttt{THROUGHPUT} and \texttt{BOLA} is therefore based on a threshold that is applied on the buffer level (for each media track). The following code snippet taken from the DASH.js source code (\texttt{AbrController} class) shows how the decision on whether to use \texttt{BOLA} is implemented:
+The algorithm that switches between \texttt{THROUGHPUT} and \texttt{BOLA} is therefore based on a threshold that is applied on the buffer level (for each media track). The following code snippet taken from the \dashjs{} source code (\texttt{AbrController} class) shows how the decision on whether to use \texttt{BOLA} is made:
 
 \begin{minted}[frame=single,linenos,breaklines,highlightlines=2]{js}
 const useBufferABR = isUsingBufferOccupancyAbrDict[mediaType];
@@ -41,7 +41,7 @@ if (newUseBufferABR !== useBufferABR) {
 }
 \end{minted}
 
-The relevant line is line 2, where the new decision on whether buffer-based ABR should be used is made based on whether the current buffer level (in seconds) is greater than a threshold.
+The relevant part is line 2, where the new decision on whether buffer-based ABR should be used is made based on whether the current buffer level (in seconds) is greater than a threshold.
 
 The \texttt{switchOffThreshold}/\texttt{switchOnThreshold} is calculated from the value of a property called \texttt{stableBufferTime}. Basically, when the buffer level exceeds a threshold value that is considered stable, the \texttt{DYNAMIC} algorithm switches to the buffer-based approach (\texttt{BOLA}), while going back to \texttt{THROUGHPUT} when the buffer level is less than half of the \texttt{stableBufferTime}.
 
@@ -50,11 +50,11 @@ const switchOnThreshold = stableBufferTime;
 const switchOffThreshold = 0.5 * stableBufferTime;
 \end{minted}
 
-The aim is to avoid continuous oscillations between the two strategies, although this does not work well in practice according to our tests. In fact, in the case of a live stream, \texttt{stableBufferTime} is assigned to the live delay target (a configuration parameter, see Section \ref{sec:testbed/frontend/dashjs}). So, for example, if the live delay is 4 seconds, this means that the \texttt{DYNAMIC} algorithm will switch from \texttt{THROUGHPUT} to \texttt{BOLA} when the buffer level goes above 4 seconds, and will switch back to \texttt{THROUGHPUT} when the buffer level goes below 2 seconds.
+The aim is to avoid continuous oscillations between the two strategies, although this does not work well in practice according to our tests. In fact, in the case of a live stream, \texttt{stableBufferTime} is assigned to the live delay target (the configuration parameter we introduced in Section \ref{sec:testbed/frontend/dashjs}). So, for example, if the live delay is 4 seconds, this means that the \texttt{DYNAMIC} algorithm will switch from \texttt{THROUGHPUT} to \texttt{BOLA} when the buffer level goes above 4 seconds, and will switch back to \texttt{THROUGHPUT} when the buffer level goes below 2 seconds.
 
-The problem is that with such a low target live latency, the buffer level tends to oscillate quite a lot and often goes below the threshold of 2 seconds, as can be seen in Figure \ref{fig:eval_abr_dashjs}, for example. In practice, this means that the default \texttt{DYNAMIC} ABR strategy of DASH.js will switch between the two approaches very often. This behavior is probably undesirable, as it does not leave time for the algorithm to make proper decisions.
+The problem is that with such a low target live latency, the buffer level tends to oscillate quite a lot and often goes below the threshold of 2 seconds, as can be seen in Figure \ref{fig:eval_abr_dashjs} as an example. In practice, this means that the default \texttt{DYNAMIC} ABR strategy of \dashjs{} will switch between the two approaches very often. This behavior is probably undesirable, as it does not leave time for the algorithm to make proper decisions.
 
-This behavior is also in contrast to the threshold used by the paper that introduced \texttt{DYNAMIC} and tested its performance. In fact, in \cite{dashjs_dynamic} the threshold value is fixed at 10 seconds. Therefore, following the recommendation in \cite{dashjs_dynamic} we decided to disable the \texttt{DYNAMIC} strategy and force the \texttt{THROUGHPUT} one. This can be done in DASH.js through settings:
+This behavior is also in contrast with the threshold used by the paper that introduced the \texttt{DYNAMIC} strategy and tested its performance. In fact, in \cite{dashjs_dynamic} the threshold value is fixed at 10 seconds. Therefore, following the recommendation of \cite{dashjs_dynamic} we decided to disable the \texttt{DYNAMIC} strategy and force the \texttt{THROUGHPUT} one. This can be done in \dashjs{} through the settings:
 
 \begin{minted}[frame=single]{js}
 player.updateSettings({
@@ -66,16 +66,16 @@ player.updateSettings({
 });
 \end{minted}
 
-While we were looking at the internals of DASH.js to investigate the issue with \texttt{DYNAMIC}, we discovered that the library includes support for \textbf{additional ABR rules} that should help in cases when the ABR strategy is not enough to make proper decisions about the next bitrate. These rules are by default:
+While we were looking at the internals of \dashjs{} to investigate the issue with \texttt{DYNAMIC}, we discovered that the library includes support for \textbf{additional ABR rules} that should help in cases when the ABR strategy is not enough to make proper decisions about the next bitrate. These rules are by default:
 
 \begin{itemize}
-    \item \texttt{DroppedFramesRule}: measures the dropped frames during playback. If they exceed 15\%, the ruel switches to a lower bitrate.
+    \item \texttt{DroppedFramesRule}: measures the dropped frames during playback. If they exceed 15\%, the rule switches to a lower bitrate.
     \item \texttt{SwitchHistoryRule}: observes the switch history and avoids switches to higher bitrates that caused quality drops in the past, according to the switch history.
     \item \texttt{AbandonRequestsRule}: calculates whether the loading of a segment should be canceled because it is estimated that it will not be loaded in time for playback, only if there is a lower bitrate that could instead be loaded in the remaining time. This rule acts as an emergency switch down.
     \item \texttt{InsufficientBufferRule}: this rule puts an upper limit on the bitrate, depending on the current buffer health.
 \end{itemize}
 
-In particular, the \texttt{InsufficientBufferRule} was found to be the most aggressive in lowering the bitrate even when it was not needed. This happens because it bases the decision on the buffer level, which, as we have seen, is always quite small in a low-latency scenario. More in detail, the \texttt{InsufficientBufferRule} listens to the \texttt{BUFFER\_EMPTY} event and requests the switch to the minimum bitrate when that happens. Otherwise, the rule calculates the maximum bitrate to use as the limit depending on the throughput, so that a whole segment can be downloaded before the buffer runs out. The relevant lines of the rule that perform this computation are:
+In particular, the \texttt{InsufficientBufferRule} was found to be the most aggressive in lowering the bitrate even when it was not needed. This happens because it bases the decision on the buffer level, which, as we have seen, is always quite small in a low-latency scenario. More in detail, the \texttt{InsufficientBufferRule} listens to the \texttt{BUFFER\_EMPTY} event and requests a switch to the minimum bitrate when that happens. Otherwise, the rule calculates the maximum bitrate (to be used as the limit) depending on the throughput, so that a whole segment can be downloaded before the buffer runs out. The relevant lines of the rule that perform this computation are the following:
 
 \begin{minted}[frame=single,linenos,breaklines,highlightlines=4]{js}
 const throughput = throughputHistory.getAverageThroughput(mediaType, isDynamic);
@@ -84,7 +84,7 @@ const fragmentDuration = representationInfo.fragmentDuration;
 const bitrate = throughput * (bufferLevel / fragmentDuration) * INSUFFICIENT_BUFFER_SAFETY_FACTOR;
 \end{minted}
 
-Line 4 is where the upper limit is calculated. Since \texttt{(bufferLevel / fragmentDuration)} can be seen as the number/fraction of segments currently in the buffer, the maximum bitrate is calculated as a multiplication between the current throughput estimate and the number of segments in the buffer. However, there is a safety factor of 0.5 that effectively halves the maximum bitrate. When the bandwidth estimate is conservative (or still has to adapt to the new network conditions) or the buffer level is kept low on purpose to achieve lower latency, this rule tends to limit the video bitrate unnecessarily.
+Line 4 is where the upper limit is calculated. Since \texttt{(bufferLevel / fragmentDuration)} can be seen as the number/fraction of segments currently in the buffer, the maximum bitrate is calculated as a multiplication between the current throughput estimate and the number of segments in the buffer. However, there is a safety factor of 0.5 that effectively halves the maximum bitrate. When the bandwidth estimate is conservative (or still has to adapt to the new network conditions) or the buffer level is kept low on purpose to achieve lower latency, this rule tends to limit the video bitrate too aggressively.
 
 For these reasons, we decided to disable the \texttt{InsufficientBufferRule} and instead create a \textbf{custom rule} that acts only when the buffer is actually empty. In this way, we avoid overreactions of the algorithm deriving from the low latency. The rule can be disabled as follows:
 
@@ -119,36 +119,36 @@ if (currentBufferState.state === MetricsConstants.BUFFER_EMPTY) {
 
 This tweaked configuration, consisting in forcing the \texttt{THROUGHPUT} strategy and modifying the additional rules, produces different results compared to previous experiments. For example, the experiment with the \texttt{lte} dataset no longer shows the issue of oscillating bitrate, as shown in Figure \ref{fig:improvements_dashjs}.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{res/impr_dashjs.png}
-    \caption{Buffer health plots showing the difference between the default DASH.js ABR configuration and the tweaked configuration.}
+    \caption{Buffer health plots showing the difference between the default \dashjs{} ABR configuration and the tweaked configuration.}
     \label{fig:improvements_dashjs}
 \end{figure}
 
-\section{Switching to hls.js}
+\section{Switching to \hlsjs{}}
 \label{sec:improvements/hlsjs}
 
-During the development of these improvements to DASH.js, we had the opportunity to take a deeper look at the internals and architecture of DASH.js. Unfortunately, we have found that most parts of the code are poorly documented and sometimes even have incomplete TypeScript types definitions. Also, our impression was that it was harder to understand how to extend the library and add new components. One of the reasons is that the library is using plain JavaScript, making it harder to have proper IDE support and type safety.
+During the development of these improvements to  \dashjs{}, we had the opportunity to take a deeper look at the internals and architecture of \dashjs{}. Unfortunately, we have found that most parts of the code are poorly documented and sometimes do not even have proper TypeScript types definitions. Also, our impression was that it was harder to understand how to extend the library and add new components. One of the reasons is that the library is using plain JavaScript, making it harder to have proper IDE support and type safety.
 
-This led us to switch to hls.js for the rest of our work. Unlike DASH.js, hls.js is written in TypeScript and is generally be better documented. For example, the general architecture and design of the library is explained in detail in the official documentation.\footnote{\url{https://github.com/video-dev/hls.js/blob/master/docs/design.md}}
+This led us to switch to \hlsjs{} for the rest of our work. Unlike \dashjs{}, \hlsjs{} is written in TypeScript and is generally better documented. For example, the general architecture and design of the library is explained in detail in the official documentation.\footnote{\url{https://github.com/video-dev/hls.js/blob/master/docs/design.md}}
 
-Unlike DASH.js, hls.js does not use a hybrid approach for the adaptation algorithm. Instead, it uses a standard \textbf{Exponential Weighted Moving Average} (EWMA) bandwidth estimator, which tracks bandwidth samples to produce an estimate of the available network bandwidth. This approach is used for both on-demand and live content, although with different configuration parameters for the EWMA computation.
+Unlike \dashjs{}, \hlsjs{} does not use a hybrid approach for the adaptation algorithm. Instead, it uses a standard \textbf{Exponential Weighted Moving Average} (EWMA) bandwidth estimator, which tracks bandwidth samples to produce an estimate of the available network bandwidth. This approach is used for both on-demand and live content, although with different configuration parameters for the EWMA computation.
 
-In addition to the bandwidth estimate, hls.js also has an \textbf{abandon rule} similar to the one of DASH.js. This rule is implemented in the \texttt{\_abandonRulesCheck} method of the \texttt{AbrController} class and is periodically called by a timer. The method calculates the download rate of the current segment and estimates whether the segment will be loaded quickly enough to prevent buffer underflow, based on the estimate of bandwidth. If necessary, the rule will then find a quality level whose bitrate allows the segment to be loaded before buffer starvation, with a safety factor of 80\%. If no level matches this condition, the lower bitrate is chosen.
+In addition to the bandwidth estimate, \hlsjs{} also has an \textbf{abandon rule} similar to the one of \dashjs{}. This rule is implemented in the \texttt{\_abandonRulesCheck} method of the \texttt{AbrController} class and is periodically called by a timer. The method calculates the download rate of the current segment and estimates whether the segment will be loaded quickly enough to prevent buffer underflow, based on the estimate of bandwidth. If necessary, the rule will then find a quality level whose bitrate allows the segment to be loaded before buffer starvation, with a safety factor of 80\%. If no level matches this condition, the lower bitrate is chosen.
 
-While we were inspecting the source code that makes the request abandoning feature possible, we found a bug that prevented the check from running in some cases. We therefore reported the issue to the hls.js developers.\footnote{\url{https://github.com/video-dev/hls.js/issues/5094}}
+While we were inspecting the source code that makes the request abandoning feature possible, we found a bug that prevented the check from running in some cases. We therefore reported the issue to the \hlsjs{} developers.\footnote{\url{https://github.com/video-dev/hls.js/issues/5094}}
 
 \section{Adding priority}
 \label{sec:improvements/priority}
 
-As we have seen in Section \ref{sec:eval/abr/hls}, using HLS with the \texttt{spike} pattern tends to produce playback stalls when the bandwidth abruptly drops. This was evident in Figure \ref{fig:eval_abr_hls}. In this section, we will look at how adding priority to some requests resolves this issue.
+As we have seen in Section \ref{sec:eval/abr/hls}, using HLS with the \texttt{spike} pattern tends to produce playback stalls when the bandwidth abruptly drops. This was evident in Figure \ref{fig:eval_abr_hls}. In this section, we will look at how adding priority to some requests helps reducing the issue.
 
-The easiest way to manipulate how hls.js sends HTTP requests is to use the \texttt{xhrSetup} or \texttt{fetchSetup} configuration options. They can be used to manipulate how HTTP requests are sent respectively with \texttt{XMLHttpRequest} or the \texttt{fetch} API, depending on how hls.js is configured. In our case we use the default XHR loader, so we would need to use the \texttt{xhrSetup} configuration option.
+The easiest way to manipulate how \hlsjs{} sends HTTP requests is to use the \texttt{xhrSetup} or \texttt{fetchSetup} configuration options. They can be used to manipulate how HTTP requests are sent respectively with \texttt{XMLHttpRequest} or the \texttt{fetch} API, depending on how \hlsjs{} is configured. In our case we use the default XHR loader, so we need to use the \texttt{xhrSetup} configuration option.
 
 The \texttt{xhrSetup} option takes a function that is called just before sending the HTTP request. In practice, it allows to override how the request is created. In our case, to set the HTTP/3 priority we need to set either the \texttt{Priority} header or the \texttt{priority} query string parameter. In fact, in Section \ref{sec:eval/browsers/priorities} we introduced a patch to the \texttt{h2o} web server that lets us set the priority with the query string parameter.
 
-Since we are interested in giving priority only to the audio segments requests, we need to distinguish which requests correspond to those segments. Doing so in the \texttt{xhrSetup} function does not give a proper way to distinguish the type of request so we must resort to looking at the format of the URL. Since the chunk files contain the ID of the stream (i.e. audio or video), we can implement priority for audio segment as follows.
+Since we are interested in \textbf{giving priority only to the audio segments requests}, we need to distinguish which requests correspond to those segments. Doing so in the \texttt{xhrSetup} function does not give a proper way to distinguish the type of request so we must resort to looking at the format of the URL. Since the chunk files contain the ID of the stream (i.e. audio or video), we can implement priority for audio segment as follows.
 
 \begin{minted}[frame=single]{ts}
 const hls = new Hls({
@@ -163,7 +163,7 @@ const hls = new Hls({
 });
 \end{minted}
 
-In this case, we are giving the chunks for stream 1 an HTTP/3 priority of \texttt{1}, while all the other files have priority \texttt{2} (still higher than the default of \texttt{3}).
+In this case, we are giving the chunks for stream \texttt{1} an HTTP/3 priority of \texttt{1}, while all the other files have priority \texttt{2} (still higher than the default of \texttt{3}).
 
 A better way would be to override the \texttt{Hls} loader to override the URL of the segment based on its type. This is slightly more complex to implement, but we can still avoid to reimplement the whole loader implementation, taking advantage of inheritance.
 
@@ -192,11 +192,11 @@ const hls = new Hls({
 });
 \end{minted}
 
-After testing this configuration that gives priority to audio, we quickly discovered that the results were not what we expected. In particular, there were still playback stalls, and in some cases the audio buffer became empty. However, this should not happen since there is always enough bandwidth to transfer the audio segments, which are very small and require just a few hundreds of kbps to be downloaded.
+After testing this configuration that gives priority to audio, we quickly discovered that the results were not what we expected. In particular, there were still playback stalls, and in some cases the audio buffer became empty. However, this should not happen since there is always enough bandwidth to transfer the audio segments, which are very small and require just a few hundreds of kbps of bandwidth.
 
-Looking at the logs of hls.js (debug mode), we quickly found that the audio media playlist took several seconds to load. Without an updated playlist, HLS does not know which segment should be requested next. This is different from DASH, where \texttt{SegmentTemplate} allows the client to generate the URL of the segment without having to request the playlist again (Section \ref{sec:bg/technologies/dash}).
+Looking at the logs of \hlsjs{} in debug mode, we discovered that the audio media playlist took several seconds to load. Without an updated playlist, HLS does not know which segment should be requested next. This is different from DASH, where \texttt{SegmentTemplate} allows the client to generate the URLs of the segments without having to update the manifest (Section \ref{sec:bg/technologies/dash}).
 
-Consequently, if we want to give priority to audio, we need to also give priority to the corresponding media playlist, in addition to the segments. This can be done by overriding the \texttt{pLoader} (playlist loader) or the generic \texttt{loader}. In the second case, the implementation of the \texttt{load} method would be something like:
+Consequently, if we want to give priority to audio, we also need to give priority to the corresponding media playlist, in addition to the segments. This can be done by overriding the \texttt{pLoader} (playlist loader) or the generic \texttt{loader}. In the second case, the implementation of the \texttt{load} method would be something like the following:
 
 \begin{minted}[frame=single]{ts}
 const fragmentContext = context as FragmentLoaderContext;
@@ -219,9 +219,9 @@ Figure \ref{fig:improvements_hls_pri} shows how this approach affects the buffer
     \label{fig:improvements_hls_pri}
 \end{figure}
 
-Clearly, when the video buffer is empty the video appears frozen on screen while the buffer recovers, although the audio will keep playing. Unlike the situation where no priority is specified, the live latency of the stream will not increase.
+Clearly, when the video buffer is empty the video will appear frozen on screen while the buffer recovers, although the audio will keep playing. Unlike the situation where no priority is specified, \textbf{the live latency of the stream will not increase}.
 
-\section{A different live user experience}
+\section{A new and different live user experience}
 \label{sec:improvements/ux}
 
 The behavior that we have shown in the previous section derives from the Chromium implementation of the handling of buffer underflows. This means, for example, that in other browsers when one of the two buffers is empty the playback will immediately stall.
@@ -252,7 +252,7 @@ Finally, a new IETF working group, \textbf{Media Over QUIC}, is evaluating how t
 
 To our knowledge, the solutions mentioned above are the only attempts that have been publicly proposed to tackle the issue of video streaming from a different perspective.
 
-In this work, we make an attempt to implement a approach similar to the one proposed by Warp, but over HTTP and using existing ABR protocol. Specifically, we modify the hls.js library and take advantage of new HTTP features made available by HTTP/3.
+In this work, we make an attempt to implement an approach similar to the one proposed by Warp, but over HTTP and using an existing ABR protocol. Specifically, we modify the \hlsjs{} library and take advantage of new HTTP features made available by HTTP/3, something that has not been tried before to our knowledge.
 
 In practice, implementing the solution means tackling the following points:
 
@@ -269,9 +269,9 @@ In a live stream, when a video segment has no chance of being loaded in time for
 
 In HTTP/3, this can be done by aborting the HTTP request, an action that in practice resets the underlying QUIC stream. Resetting a stream means sending a frame of type \texttt{RESET\_STREAM} and immediately closing the stream, also stopping the transmission of the data, if any.
 
-In hls.js, video segments are downloaded sequentially, one at a time. Therefore, we can always look at the current segment and estimate whether the segment will not arrive on time and cancel the download if needed. This is somewhat similar to what the \texttt{\_abandonRulesCheck} does, which we mentioned in Section \ref{sec:improvements/hlsjs}. The \texttt{\_abandonRulesCheck} method is called by a JavaScript interval every 100 milliseconds and evaluates whether the current segment is taking too long to load. If so, it will abort the load of the segment.
+In \hlsjs{}, video segments are downloaded sequentially, one at a time. Therefore, we can always look at the current segment and estimate whether the segment will not arrive on time and cancel the download if needed. This is somewhat similar to what the \texttt{\_abandonRulesCheck} does, which we mentioned in Section \ref{sec:improvements/hlsjs}. The \texttt{\_abandonRulesCheck} method is called by a JavaScript interval every 100 milliseconds and evaluates whether the current segment is taking too long to load. If so, it will abort the load of the segment.
 
-For our scenario, we needed to implement something similar. As a first attempt we implemented an simpler mechanism that simply checks whether we are about to reach the end of the video buffer. We therefore modified the hls.js source code and specifically the \texttt{AbrController}. We added a new periodic timer for a function named \texttt{fillerCheck}, which calculates how much time is left in the buffer.
+For our scenario, we needed to implement something similar. As a first attempt we implemented a simpler mechanism that checks whether we are about to reach the end of the video buffer. We therefore modified the \hlsjs{} source code and specifically the \texttt{AbrController}. We added a new periodic timer for a function named \texttt{fillerCheck}, which calculates how much time is left in the buffer, as shown in the following code block.
 
 \begin{minted}[frame=single]{ts}
 const bufferInfo = BufferHelper.bufferInfo(
@@ -284,9 +284,9 @@ const bufferLength = bufferInfo.len;
 const nextFragmentOffset = frag.start - bufferInfo.end;
 \end{minted}
 
-The \texttt{bufferLength} is self-explanatory: it corresponds to the seconds of media data currently in the buffer between the current video timestamp and the end of the buffer. Obviously, if no data is appended to the buffer the length will decrease at every tick of the timer. The \texttt{nextFragmentOffset} is the time difference between the end of the buffer and the start of the fragment. This is used to understand whether the fragment currently being loaded is actually the one immediately following the end of the buffer. Ideally, the difference should be zero, but timestamps are not always that precise so we use some tolerance (specifically \texttt{maxBufferHole}).
+The \texttt{bufferLength} variable is self-explanatory: it corresponds to the seconds of media data currently in the buffer between the current video timestamp and the end of the buffer. Obviously, if no data is appended to the buffer the length will decrease at every tick of the timer. The \texttt{nextFragmentOffset} is the time difference between the end of the buffer and the start of the fragment. This is used to understand whether the fragment currently being loaded is actually the one immediately following the end of the buffer. Ideally, the difference should be zero, but timestamps are not always that precise so we use some tolerance (specifically, \texttt{maxBufferHole}).
 
-When the above condition is met and the \texttt{bufferLength} is less than a threshold, we make the decision to abort the segment load. The threshold is set by default to 200 milliseconds (considering the fact that the tick interval is 100 milliseconds), but it is configurable. Another thing that the implementation needs to consider is that the segment loading might be aborted by other rules, for example the \texttt{\_abandonRulesCheck}, and handle that situation.
+When the above condition is met and the \texttt{bufferLength} is less than a threshold, we make the decision to abort the segment load. The threshold is set by default to 200 milliseconds (considering the fact that the tick interval is 100 milliseconds), but it is configurable. Another thing that the implementation needs to consider and handle is that the segment loading might be aborted by other rules, for example the \texttt{\_abandonRulesCheck}.
 
 Upon making the decision to abort the segment loading, we cancel the actual download of the segment file. Since we are in the \texttt{AbrController} and have access to the \texttt{Fragment} being loaded, we can directly interact with the \texttt{Loader} instance through the \texttt{loader} property. We therefore modified the \texttt{Loader} interface and defined a new method that mainly performs two operations:
 
@@ -298,13 +298,13 @@ Upon making the decision to abort the segment loading, we cancel the actual down
 \section{Generating the filler segment}
 \label{sec:improvements/filler}
 
-When the segment dropping code makes the decision to discard a video segment and interrupts its loading, the buffer must still be filled with some placeholder data in order not to interrupt playback. We call this "fake" segment a \textbf{filler segment}.
+When the segment dropping code makes the decision to discard a video segment and interrupt its loading, the buffer must still be filled with some placeholder data in order not to interrupt playback. We call this "fake" segment a \textbf{filler segment}.
 
-To reproduce the Chromium underflow behavior, which consists of showing the last rendered frame on the video canvas while the playback continues with audio, we would need to generate a video segment on the client side by encoding a 2-second video file containing the still picture.
+To reproduce the Chromium underflow behavior, which consists of showing the last rendered frame on the video player while the playback continues with audio, we would need to \textbf{generate a video segment on the fly in the browser}. This means in practice to encode a 2-second video fragment containing a still picture corresponding to the video frame.
 
-As a first implementation to confirm the feasibility of the solution, we implemented a simpler solution that uses an empty frame with a solid color background. Since H.264 does not necessarily contain timing data, in this way the segment can be generated statically beforehand and even hardcoded in the client code.
+As a first implementation to confirm the feasibility of the solution, we implemented a simpler solution that uses an empty frame with a solid color background. Since H.264 does not necessarily contain timing data, in this way the segment can be generated statically beforehand and reused multiple times. It can even be hardcoded in the client code.
 
-However, having the H.264 bitstream is not enough to play the segment. First, the Media Source Extensions API expects muxed data in fMP4, therefore the H.264 data must be correctly inserted in the fMP4 container with the correct timing information.
+However, having the H.264 bitstream is not enough to play the segment. In fact, the Media Source Extensions API expects muxed data in the fragmented MP4 format, therefore the H.264 data must be correctly inserted in the MP4 container with the correct timing information.
 
 Moreover, since the filler segment is generated with different encoding parameters than the main stream, there is a discontinuity that the video decoder must be aware of. In fMP4, this signaling of the new parameters is done through initialization segments, that is, segments that contain at least the \texttt{ftyp} and \texttt{moov} boxes. This information is shared by all the segments following the init segment, until a new one is found.
 
@@ -313,23 +313,23 @@ Once both the init segment and the segment data are available, they are appended
 \section{Muxing in the browser}
 \label{sec:improvements/muxing}
 
-As mentioned above, once we had the H.264 bitstream for the encoded empty video frame we had to mux it into the fMP4 container to produce the segment. The segment can be composed of only one frame with a duration of 2 seconds, and the correct start timestamp.
+As mentioned above, once we have the H.264 bitstream of the video frame we have to \textbf{mux it into the fMP4 container} to produce the segment. The segment does not need to contain 25 frames per second, but it can actually contain only one video frame with a duration of 2 seconds (and the correct start timestamp).
 
 The browser APIs do not provide a way to mux or transmux video data, therefore we had to rely on other libraries. An important fact that affects the implementation is that we are dealing with the fragmented MP4 container format and not just MP4. In fact, not all libraries support the fMP4 format.
 
-After investigating possible alternatives, we concluded that there was no complete JavaScript library that implements fMP4 muxing in the browser. In fact, fMP4 muxing is usually performed directly by the libraries that use the MSE API, such as hls.js when transmuxing from MPEG-2 TS to fMP4.
+After investigating many possible options, we came to the conclusion that there was no complete JavaScript library that implements fMP4 muxing in the browser. In fact, fMP4 muxing is usually performed directly by the libraries that use the MSE API, such as \hlsjs{} when transmuxing from MPEG-2 TS to fMP4.
 
-Instead of delving into a manual JavaScript implementation of fMP4 muxing from the raw H.264 bitstream, we decided to experiment with an approach based on \texttt{WebAssembly}.
+Instead of delving into a manual JavaScript implementation of fMP4 muxing from the raw H.264 bitstream, we decided to experiment with an approach based on \texttt{WebAssembly}, which turned out to be successful.
 
 \texttt{WebAssembly} (WASM) is a low-level binary format that can be used as a build target of many programming languages. It is meant to provide an efficient alternative to JavaScript: a WASM binary file can be embedded and executed in a web page, effectively allowing to execute code written in any supported programming language in the browser at close-to-native performance.
 
-In our case, we took advantage of WASM to execute a Go application to perform the muxing of the video data in the browser. The Go programming language provides out of the box support for building to WASM. For example, to build a \texttt{main.go} file to a WASM binary named \texttt{main.wasm} one would use the command:
+In our case, we took advantage of WASM to execute a Go application to perform the muxing of the video data in the browser. The Go programming language provides out of the box support for building to WASM. For example, to build a \texttt{main.go} file to a WASM binary named \texttt{main.wasm} one would use the following command:
 
 \begin{minted}[frame=single]{bash}
 GOOS=js GOARCH=wasm go build -o main.wasm main.go
 \end{minted}
 
-The Go code built with WASM can then be executed in the browser thanks to a JavaScript utility provided by Go and included with every installation, \texttt{wasm\_exec.js}. In the web page, a simple code snippet such as the following loads the WASM binary file and executes its content.
+The Go code built in the WASM format can then be executed in the browser thanks to a JavaScript utility provided by Go and included with every installation, \texttt{wasm\_exec.js}. In the web page, a simple code snippet such as the following loads the WASM binary file and executes its content.
 
 \begin{minted}[frame=single]{js}
 const go = new Go();
@@ -364,7 +364,7 @@ func main() {
 
 Both functions take the H.264 coded data as input, which is then muxed into an fMP4 container. To perform the muxing, we use \texttt{mp4ff}, a library to parse and write MP4 files.\footnote{\url{https://github.com/edgeware/mp4ff}} The input H.264 data must be in the Annex B format with start codes (see Section \ref{sec:bg/compression/codecs/h264}).
 
-For the initialization segment, we must create an fMP4 file containing a \texttt{moov} atom that defines some characteristics of the video tracks. In this case, we only have one video track in the H.264 format, whose decoding information is written in a box that follows the \texttt{avcC} format (see Section \ref{sec:bg/containers/mp4}).
+For the initialization segment, we must create an fMP4 file containing a \texttt{moov} atom that defines some characteristics of the video tracks. In this case, we only have one video track in the H.264 format, whose decoding information is written in a box in the \texttt{avcC} format (see Section \ref{sec:bg/containers/mp4}).
 
 To build the H.264 descriptor, we must first extract two NAL units from the H.264 bitstream, specifically the \textbf{Sequence Parameter Set} (SPS) and the \textbf{Picture Parameter Set} (PPS). These units contain information such as the width and height of the frame and other encoding parameters. Extracting them means parsing the NAL units from the H.264 bitstream and identifying which are the SPS and PPS units, as shown in Figure \ref{fig:wasm_go_sps}.
 
@@ -392,11 +392,11 @@ func ExtractSpsPps(bitstream []byte) ([]byte, []byte) {
 
 The init segment can then be built by adding the \texttt{moov} boxes, which contains a single \texttt{trak} with the \texttt{avcC} information. In this step, we also need to assign a time scale to the video track. The time scale represents the number of time units per second, and is then used as a basis for assigning a timestamp to the specific video frame. For example, if we set the time scale to 12800, a typical value, it means that in a 25 fps video file each frame will have a timestamp that is a multiple of 512.
 
-The \texttt{createFragment} function is instead used to create the actual media segment, or fMP4 fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both in seconds.
+The WASM \texttt{createFragment} function is instead used to create the actual media segment, or fMP4 fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both expressed in seconds.
 
-In the actual implementation, we must create another fragmented MP4 file instance and only add one fragment to it. Since the Annex B packetization format is incompatible with MP4, we must first convert the byte stream to NALU packets. The library \texttt{mp4ff} provides us with an helper function to do this.
+In the actual implementation, we must create another fragmented MP4 file instance and only add one fragment to it. Since the Annex B packetization format is incompatible with MP4, we must first convert the byte stream to packets. The library \texttt{mp4ff} provides us with an helper function to do this.
 
-We then need to add the video frames to the segment. In our case, we have a single frame which we will put in an MP4 sample with a duration of 2 seconds. Note that the timestamp and duration need to be expressed in terms of the time scale, as mentioned before. Figure \ref{fig:wasm_go_fragment} shows a simplified piece of code that creates the sample and adds it to the fragment.
+We then need to add the video frames to the segment. In our case, we have a single frame which we will put in an MP4 sample with a duration of 2 seconds. Note that both the timestamp and the duration must be expressed in terms of the time scale, as mentioned before. Figure \ref{fig:wasm_go_fragment} shows a simplified piece of code that creates the sample and adds it to the fragment.
 
 \begin{figure}[h]
     \centering
@@ -420,12 +420,12 @@ frag.AddFullSample(sample)
     \label{fig:wasm_go_fragment}
 \end{figure}
 
-\section{Discontinuity handling in hls.js}
+\section{Discontinuity handling in \hlsjs{}}
 \label{sec:improvements/discontinuities}
 
-As mentioned above, when the \texttt{AbrController} of hls.js decides that the segment loading should be aborted and the segment replaced with a filler segment, according to our implementation, the loader implementation will invoke a callback.
+As we have seen before, when the modified \texttt{AbrController} in \hlsjs{} decides that the segment loading should be aborted and the segment replaced with a filler segment, the loader implementation will invoke a callback.
 
-This callback is handled in the \texttt{FragmentLoader} class of hls.js, which is an abstraction that coordinates the lifecycle of the actual loaders, whenever the \texttt{StreamController} decides that a new segment must be loaded. The \texttt{FragmentLoader} is therefore the place where the WASM functions \texttt{createInit} and \texttt{createFragment} are called to produce the new fragment.
+This callback is handled in the \texttt{FragmentLoader} class of \hlsjs{}, which is an abstraction that coordinates the lifecycle of the actual loaders, which are created whenever the \texttt{StreamController} decides that a new segment must be loaded. The \texttt{FragmentLoader} is therefore the place where the WASM functions \texttt{createInit} and \texttt{createFragment} are called to produce the new fragment.
 
 Once the generated fragment data is ready, the \texttt{FragmentLoader} will signal to the \texttt{StreamController} that the segment loading has been completed. The data will then be passed to the \textbf{transmuxer}, which is again an abstraction that coordinates the demuxer and remuxer implementations. In this case, the data is already in the fMP4 format so the transmuxer is a passthrough remuxer.
 
@@ -450,13 +450,13 @@ In this way, every time there is a filler segment, the transmuxer session will b
 \section{Encoding the filler segment with WebCodecs}
 \label{sec:improvements/webcodecs}
 
-In Section \ref{sec:improvements/filler}, we explained how the initial implementation only uses a static filler segment with no actual video content. However, it is possible to actually encode the video segment in the browser through JavaScript code, thanks to the WebCodecs API, and make its content dynamic.
+In Section \ref{sec:improvements/filler}, we explained how the initial implementation only used a static filler segment with no actual video content. However, it is possible to actually encode the video segment in the browser through JavaScript code, thanks to the \textbf{WebCodecs API}, and make its content dynamic.
 
-WebCodecs is a set of browser APIs that provide high-level methods to encode and decode video and audio content in the browser. The specification is still a draft, but is already implemented and enabled by default in Chromium, and therefore all Chromium-based browsers, since the end of 2021. These browsers represent more than 70\% of the global web users, at the time of writing. Safari also enabled WebCodecs support by default in the Technical Previews of the browser, in November 2022.\footnote{\url{https://caniuse.com/webcodecs}} Firefox still does not have support for WebCodecs but is in the process of implementing it.\footnote{\url{https://bugzilla.mozilla.org/show_bug.cgi?id=1746557}}
+WebCodecs is a set of browser APIs that provide high-level methods to \textbf{encode and decode audio and video content in the browser}. The specification is still a draft, but is already implemented and enabled by default in Chromium, and therefore all Chromium-based browsers, since the end of 2021. These browsers represent more than 70\% of the global web users, at the time of writing. Safari also enabled WebCodecs support by default in the Technical Previews of the browser in November 2022.\footnote{\url{https://caniuse.com/webcodecs}} Firefox still does not have support for WebCodecs but is in the process of implementing it.\footnote{\url{https://bugzilla.mozilla.org/show_bug.cgi?id=1746557}}
 
-With WebCodecs, we can encode video frames and produce a raw bitstream as an output. The codecs that can be used depend on which encoders are included and distributed with the browser build. For example, Google Chrome always ships with an H.264 encoder. WebCodecs only takes care of encoding and decoding media data but does not handle muxing or demuxing.
+With WebCodecs, we can encode video frames and \textbf{produce a raw bitstream} as an output. The codecs that can be used depend on which encoders are included and distributed with the browser build. For example, Google Chrome always ships with an H.264 encoder. WebCodecs only takes care of encoding and decoding media data but does not handle muxing or demuxing.
 
-There are several classes that are part of WebCodecs. For our use case, we are interested in the \texttt{VideoEncoder} and \texttt{VideoFrame} classes. Individual video frames can be created using the \texttt{VideoFrame} constructor, from multiple types of sources, and are then fed into an instance of the \texttt{VideoEncoder}, one at a time. The outputs of the \texttt{VideoEncoder} are \texttt{EncodedVideoChunk} instances that together represent the enocded video.\cite{webcodecs}
+There are several classes that are part of WebCodecs. For our use case, we are interested in the \texttt{VideoEncoder} and \texttt{VideoFrame} classes. Individual video frames can be created using the \texttt{VideoFrame} constructor, from multiple types of sources, and are then fed into an instance of the \texttt{VideoEncoder}, one at a time. The outputs of the \texttt{VideoEncoder} are \texttt{EncodedVideoChunk} instances that together represent the encoded video.\cite{webcodecs}
 
 \begin{figure}[h]
     \centering
@@ -473,7 +473,7 @@ const frame = new VideoFrame(canvas, {
 });
 \end{minted}
 
-To encode the frame, we first need to create a \texttt{VideoEncoder} instance specifying a codec configuration supported by the browser. Unfortunately, it is not possible to obtain a list of supported configurations; therefore, a strategy could be to make multiple attempts until a working configuration is found. The async static method \texttt{VideoEncoder.isConfigSupported(config)} allows to check whether the input configuration is supported.
+To encode the frame, we first need to create a \texttt{VideoEncoder} instance specifying a codec configuration supported by the browser. Unfortunately, it is not possible to obtain a list of supported configurations; therefore, a possible strategy is to make multiple attempts until a working configuration is found. The async static method \texttt{VideoEncoder.isConfigSupported(config)} lets developers check whether the input configuration is supported.
 
 The code example in Figure \ref{fig:webcodecs_videoencoder} shows how a \texttt{VideoEncoder} instance can be configured. In this case, the following options are specified:
 
@@ -489,7 +489,7 @@ The code example in Figure \ref{fig:webcodecs_videoencoder} shows how a \texttt{
     \item \textbf{AVC} contains H.264-specific options. In this case, we are asking the encoder to return a stream in the Annex B format.
 \end{itemize}
 
-There are also options to control whether \textbf{hardware acceleration} should be preferred if available and whether to \textbf{optimize for low latency}.
+There are also options to control whether \textbf{hardware acceleration} should be preferred, if available, and whether to \textbf{optimize for low latency}.
 
 \begin{figure}
     \centering
@@ -516,17 +516,17 @@ encoder.configure(config);
     \label{fig:webcodecs_videoencoder}
 \end{figure}
 
-Encoding complex video sequences with \texttt{VideoEncoder} requires careful consideration of the rate with which frames should be provided to the encoder, but in our case we just need to encode a single frame, so the implementation is simpler. The encoding of a frame can be started with the following function call:
+Encoding complex video sequences with \texttt{VideoEncoder} requires careful considerations on the rate with which frames should be provided to the encoder, but in our case we just need to encode a single frame, so the implementation is simpler. The encoding of a frame can be started with the following function call:
 
 \begin{minted}[frame=single]{js}
 encoder.encode(frame);
 \end{minted}
 
-In these code samples, error handling and proper management of the resources lifecycle are purposely omitted.
+In these code samples, error handling and proper management of the resources lifecycle are omitted for brevity.
 
-When a newly encoded video chunk is available, a callback defined as a property of the \texttt{init} object passed to the \texttt{VideoEncoder} is invoked. All the data required by the decoder, including the SPS and PPS metadata, are included in the provided bitstream in the Annex B format as specified in the encoder configuration.
+When a newly encoded video chunk is available, a callback defined as a property of the \texttt{init} object passed to the \texttt{VideoEncoder} is invoked. All the data required by the decoder, including the SPS and PPS metadata, are included in the provided bitstream in the Annex B format.
 
-As mentioned above, the video frame can be created starting from a 2D \texttt{canvas} that can contain any picture. If we want to create a video segment made of a still picture of the last frame shown on the screen, we can do that with the \texttt{canvas} API. The following code block shows how we can draw the current image render in a \texttt{video} element on a \texttt{canvas}.
+As mentioned above, the video frame can be created starting from a 2D \texttt{canvas} that can contain any picture. If we want to create a video segment made of a still picture of the last frame shown on the screen, we can do that with the \texttt{canvas} API. The following code block shows how we can draw the current image rendered by a \texttt{<video>} element on a \texttt{canvas}.
 
 \begin{minted}[frame=single]{js}
 const canvas = document.createElement('canvas');
@@ -534,36 +534,36 @@ const ctx = canvas.getContext('2d');
 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 \end{minted}
 
-Note that the source image resolution might not correspond to the one of the \texttt{canvas}, therefore we must specify the destination dimensions when calling the \texttt{drawImage} function so that the picture is scaled correctly.
+Note that the source image resolution might not correspond to the one of the \texttt{canvas}. For this reason, we must specify the destination dimensions when calling the \texttt{drawImage} function, so that the picture is scaled correctly.
 
-Note that while the filler segment can in theory be of any resolution independently from the current ABR level in our implementation we try to match the expected resolution.
+Note that while the filler segment can in theory be of any resolution independently from the current ABR level, in our implementation we try to match the expected resolution.
 
 \section{Changes to the testbed}
 \label{sec:improvements/newtestbed}
 
-In the previous sections, we introduced how an alternative user experience for live streaming can be built, taking advantage of multiple techniques such as giving priority to audio segments, dropping segments and generating filler segments on the fly. To test and integrate the solution with the testbed, we need to make some changes to it.
+In the previous sections, we introduced how an alternative user experience for live streaming can be built, taking advantage of multiple techniques such as giving priority to audio segments, dropping segments and generating filler segments on the fly. To \textbf{test and integrate the solution with the testbed}, we need to make some changes to it.
 
-First, we must swap the hls.js implementation with our modified version. Since we are building the application with \texttt{Vite}, which bundles the dependencies declared in the \texttt{package.json} file, we can replace the version of the hls.js library that we want to pull with a local module or a remote repository. In our case, we chose to fork the hls.js repository on GitHub so that \texttt{npm} can pull the modified library from there.
+First, we must swap the \hlsjs{} implementation with our modified version. Since we are building the application with \texttt{Vite}, which bundles the dependencies declared in the \texttt{package.json} file, we can replace the version of the \hlsjs{} library with a local module or the path to a remote repository. In our case, we chose to fork the \texttt{hls.js} repository on GitHub so that \texttt{npm} can pull the modified library from there.
 
-For WebAssembly to work, the initialization code mentioned in Section \ref{sec:improvements/muxing} must be executed. This code can be included in two ways: through the JavaScript code of the hls.js library, or directly in the HTML page of the testbed frontend. In the second case, we must modify the testbed to include the WebAssembly initialization.
+For WebAssembly to work, the initialization code mentioned in Section \ref{sec:improvements/muxing} must be executed on the web page. This initialization code can be included in two ways: through the TypeScript code of the \textbf{hls.js} library, or directly in the HTML page of the testbed frontend. In the second case, we must modify the testbed to include the WebAssembly initialization.
 
-If audio prioritization is not integrated directly in the hls.js fork, the HTTP loader must be overridden, as seen in Section \ref{sec:improvements/priority}. Finally, for a proper analysis of the performance of the solution, it would be useful to know when a segment was dropped and replaced with a filler. The stats collector on both the frontend and the backend then needs to be updated to collect this information.
+If audio prioritization is not implemented directly in the modified version of \hlsjs{}, we must modify the \texttt{Hls} instance creation to override the HTTP loader, as seen in Section \ref{sec:improvements/priority}. Finally, for a proper analysis of the performance of the solution it would be useful to know when a segment was dropped and replaced with a filler. To do this, the statistics collector on both the frontend and the backend need to be updated to collect this information.
 
 \section{Experimental results}
 \label{sec:improvements/results}
 
 In this section, we analyze some results that we obtained with the modified testbed and observe whether the solution indeed produces a better user experience.
 
-Figure \ref{fig:filler1} shows the buffer health plot for an experiment with the modified hls.js library. The protocol is HTTP/3 in order to be able to use priorities and the network pattern is \texttt{spike}, the one that we used in previous section and showed unideal results with existing solutions.
+Figure \ref{fig:filler1} shows the buffer health plot for an experiment run with the modified \hlsjs{} library. The protocol is HTTP/3 so that priorities can be used. The network pattern is \texttt{spike}, the one that in previous sections showed unideal performance.
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/impr_hls_filler.png}
-    \caption{Buffer health plot for an experiment using the modified hls.js library. The protocol is HTTP/3 and priority is given to audio. The network pattern is \texttt{spike}. Outdated segments are dropped and replaced by the filler segment.}
+    \caption{Buffer health plot for an experiment using the modified \hlsjs{} library. The protocol is HTTP/3 and priority is given to audio. The network pattern is \texttt{spike}. Outdated segments are dropped and replaced by the filler segment.}
     \label{fig:filler1}
 \end{figure}
 
-As we can see, the playback stalls have been completely removed. Playback is not interrupted because there is always some audio in the buffer to play. The black areas (TODO) refer to the segments that have been dropped and replaced with a filler segment.
+As we can see, \textbf{the playback stalls have been completely removed}. Playback is not interrupted because there is always some audio in the buffer to play. The black areas (TODO) refer to the segments that have been dropped and replaced with a filler segment.
 
 In Figure \ref{fig:filler2} we can also see the live latency and the waterfall. It is clear that with this solution the live latency stays stable even during the congestion periods. In the waterfall diagram, we can see which segments are discarded, represented in black.
 
@@ -584,7 +584,7 @@ In Figure \ref{fig:filler2} we can also see the live latency and the waterfall. 
 		\label{fig:filler2_waterfall}
 	\end{subfigure}
 	
-	\caption{Additional plots for the experiment with modified hls.js version over HTTP/3 with the \texttt{spike} network pattern.}
+	\caption{Additional plots for the experiment with modified \hlsjs{} version over HTTP/3 with the \texttt{spike} network pattern.}
 	\label{fig:filler2}
 \end{figure}
 

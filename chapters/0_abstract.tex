@@ -3,10 +3,8 @@
 
 \addcontentsline{toc}{chapter}{Abstract} % add to index
 
-TODO
+Video streaming over the Internet has become increasingly popular in recent years and now accounts for more than 50\% of total traffic. One of the main challenges video developers have to tackle is providing a user experience that is as smooth as possible. In live video streaming, low-latency in particular, the problem is especially challenging and requires finding a trade-off between reducing the probability of video freezes (rebuffering) and keeping a high video quality.
 
-%Video streaming over the public Internet has become a hot topic in recent years, with video traffic now accounting for more than 50\% of the total Internet traffic. In live streaming, one of the main challenges is latency
-
-%We then propose a new approach to improve the live streaming user experience, which is the objective of this thesis. We first develop a textbftestbed for experimenting with HTTP-based live streaming protocols. Then, we use the testbed to evaluate the performance of existing streaming protocols such as HLS and DASH with different configurations and HTTP versions. The experimental results show that this solution almost eliminates video playback stalls, providing smooth playback of the audio track even when the video could not be loaded.
+In this thesis, we first develop a testbed to evaluate the performance of adaptive bitrate video streaming technologies. We then run some emulations and experiment with real-word network datasets to analyze how existing solutions behave. We find that some configurations show suboptimal behavior and propose some improvements based on that. The main proposed solution, which takes advantage of HTTP/3 features and modern browser APIs such as WebCodecs and WebAssembly, shows that it is possible to greatly reduce playback stalls and provide a smooth playback experience with stable live latency, as the experimental results show.
 
 \newpage

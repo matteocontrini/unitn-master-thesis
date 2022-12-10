@@ -5,7 +5,7 @@
 
 During the last decade, the usage of \textbf{online video streaming} has exploded. From sports to entertainment, the market has seen strong growth in the past few years and video streaming now accounts for more than half of Internet traffic.\cite{cisco2019}
 
-\textbf{Live events streaming} in particular is becoming increasingly relevant, with a 15-fold growth in the past few years, according to statistics. This is in part due to the effect of the pandemic, through which many organizations started to live stream events and kept doing it, and in part due to a more general shift from traditional broadcasting means such as DVB-T (digital terrestrial), cable TV and satellite to Internet streaming. A special category of live streaming is \textbf{low-latency streaming}, as we will see, which is particularly relevant for use cases such as sporting events, gaming, and live news coverage.
+\textbf{Live events streaming} in particular is becoming increasingly relevant, with a 15-fold growth in just five years, according to statistics. This is in part due to the effect of the pandemic, through which many organizations started to live stream events and kept doing it, and in part due to a more general shift from traditional broadcasting means such as DVB-T (digital terrestrial), cable TV and satellite to Internet streaming. A special category of live streaming is \textbf{low-latency streaming}, as we will see, which is particularly relevant for use cases such as sporting events, gaming, and live news coverage.
 
 In this chapter, we will briefly introduce the context of our work, namely, how modern video streaming works and what the main challenges are. We will then present how these challenges are usually tackled and why we believe that a different point of view could be needed to provide a satisfying user experience to viewers. Finally, we propose some improvements and implement a new approach to improve the live streaming quality of experience.
 
@@ -25,7 +25,7 @@ Video streaming over the public Internet faces the problem of \textbf{slow or co
 
 Although modern compression standards achieve significant compression ratios, leading to bitrates usually below 10 Mbps even for high-resolution content at good quality, not all networks are always able to provide such bitrates reliably.
 
-In fact, while modern access networks such as fiber optics and 4G/5G can be quite reliable and provide a high throughput, Internet connectivity is still far from perfect. As an example, very high capacity networks are still not dominant in most countries. Mobile networks coverage can be problematic too, and Wi-Fi connectivity can be unstable due to interferences and limitations of the wireless protocol.
+In fact, while modern access networks such as fiber optics and 4G/5G can be quite reliable and provide a high throughput, Internet connectivity is still far from being perfect. As an example, very high capacity networks are still not dominant in most countries. Mobile networks coverage can be problematic too, and Wi-Fi connectivity can be unstable due to interferences and limitations of the wireless protocol.
 
 An additional source of issues that is often overlooked is the Internet Service Provider network, whose backhauling infrastructure needs to be sized properly to avoid congestion. Interconnections with CDNs and other providers are also very important, as they can become congested during peak hours if capacity upgrades are not properly planned in advance.
 
@@ -38,23 +38,23 @@ The core idea of \textbf{Adaptive Bitrate Streaming} (ABR) is to have video cont
 
 The two most common protocols for adaptive streaming are \textbf{Apple HLS} (HTTP Live Streaming) and \textbf{MPEG-DASH} (Dynamic Adaptive Streaming over HTTP). As the names suggest, both work over HTTP and are conceptually similar.
 
-They require video content to be encoded in short video segments (no more than a few seconds) so that players can switch rendition at segment boundaries. Bitrate adaptation algorithms should find a tradeoff between reducing the probability of video freezes (rebuffering) and keeping a high video quality level, but neither HLS or DASH mandate how players should choose the bitrate for the next segment. Multiple approaches are possible, as we will see in more detail in the following chapters.
+They require video content to be encoded in short video segments (no more than a few seconds) so that players can switch rendition at segment boundaries. Bitrate adaptation algorithms should find a trade-off between reducing the probability of video freezes (rebuffering) and keeping a high video quality level, but neither HLS or DASH mandate how players should choose the bitrate for the next segment. Multiple approaches are possible, as we will see in more detail in the following chapters.
 
 An important benefit of using HTTP for video streaming is that it makes it easy for streaming platforms to scale, thanks to the widespread availability of \textbf{Content Delivery Networks} (CDN) and their global distribution networks.
 
 \section{Challenges in live video streaming}
 \label{sec:intro/challenges}
 
-Both HLS and DASH support live streams. They do so by making available new video segments as soon as they are encoded.
+Both HLS and DASH support \textbf{live streams}. They do so by making available new video segments as soon as they are encoded.
 
-Delivering live streams introduces a new category of challenges for video players, which need to find a trade-off between stream reliability and lower latency. In fact, lowering latency usually means keeping a smaller buffer of media data on the client, with the disadvantage that rate adaptation algorithms might not be able to react timely to network fluctuations. If video segments cannot be loaded in time, this can lead to rebuffering.
+Delivering live streams introduces a new category of challenges for video players, which need to find a trade-off between stream reliability and lower latency. In fact, lowering latency usually means keeping a smaller buffer of media data on the client, with the disadvantage that rate adaptation algorithms might not be able to react timely to network fluctuations. If video segments cannot be loaded in time, this can cause rebuffering.
 
 \section{A different live user experience}
 \label{sec:intro/experience}
 
-When a live video streaming setup struggles to adapt to network conditions, the most noticeable effect is \textbf{rebuffering}. The playback gets stuck while the player tries to complete the download of the next video segment, and the latency tends to grow. As a consequence, playback will lag behind the live event and users will perceive the action late, possibly by even tens of seconds.
+When a live video streaming setup struggles to adapt to network conditions, the most noticeable effect is \textbf{rebuffering}. The playback gets stuck while the player tries to complete the download of the next video segment, and the \textbf{latency tends to grow}. As a consequence, playback will lag behind the live event and users will perceive the action late, possibly by even tens of seconds.
 
-This kind of experience is different from other broadcasting mechanisms. For example, digital terrestrial and satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
+This kind of experience is \textbf{different from other broadcasting mechanisms}. For example, digital terrestrial and satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
 
 Adaptive streaming research has been mostly focused on avoiding empty buffers as much as possible, although in low-latency scenarios entirely avoiding rebuffering is a very hard task. Instead, there are methods that can be integrated in an adaptive streaming setup so that the linear TV experience that viewers are already used to can also be replicated in video streaming. Although subjective, it would likely result in a better Quality of Experience (QoE).
 
@@ -69,10 +69,10 @@ The next step is to implement a \textbf{segment dropping} approach: when a video
 
 The dropped segment needs to be replaced with a placeholder that we call \textbf{filler segment}. This segment is dynamic and generated on the fly in the frontend, taking advantage of the WebCodecs API and WebAssembly.
 
-The experimental results show that this solution almost eliminates video playback stalls, providing smooth playback of the audio track even when the video could not be loaded. In this way, even when the video rate adaption algorithm is slow to react to the new network conditions, a smooth user experience is preserved.
+The experimental results show that this solution almost eliminates video playback stalls, providing smooth playback of the audio track even when the video could not be loaded. In this way, even when the video rate adaptation algorithm is slow to react to the new network conditions, a smooth user experience is preserved.
 
 \section{Thesis structure}
 \label{sec:intro/structure}
 
-The remainder of the thesis is organized as follows. In Chapter \ref{cha:bg}, we introduce the main concepts and technologies surrounding video compression and streaming over HTTP. In Section \ref{cha:testbed}, we introduce the testbed setup that we developed to evaluate the performance of streaming protocols. In Section \ref{cha:eval}, we show the results of the analysis of a few experiments that show suboptimal behaviors. In Section \ref{cha:improvements}, we propose some improvements to the live streaming user experience and show the results of the implementation of a modified version of HLS. Finally, in Chapter \ref{cha:conclusions} we acknowledge some limitations of our work and mention a few ideas that are left for future work.
+The remainder of the thesis is organized as follows. In \textbf{Chapter \ref{cha:bg}}, we introduce the main concepts and technologies surrounding video compression and streaming over HTTP. In \textbf{Chapter \ref{cha:testbed}}, we introduce the testbed setup that we developed to evaluate the performance of streaming protocols. In \textbf{Chapter \ref{cha:eval}}, we show the results of the analysis of some experiment runs that show suboptimal behavior. In \textbf{Chapter \ref{cha:improvements}}, we propose some improvements to the live streaming user experience and show the results of the implementation of a modified version of HLS. Finally, in \textbf{Chapter \ref{cha:conclusions}} we acknowledge some limitations of our work and mention a few ideas that are left for future work.
 

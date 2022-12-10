@@ -8,16 +8,16 @@ In this section, we will introduce the main concepts and technologies on which v
 
 Video is known to be one of the heaviest types of content to be stored and transmitted. Since treating uncompressed video is unfeasible, video compression or video coding formats have been developed and standardized over the years, with multiple implementations (\textbf{codecs}) being released. The objective of video codecs is to limit the output data rate, measured in bits per second, while trying to maintain a perceptually good video quality.
 
-The process of compressing a video is known as \textbf{encoding} and is carried out by an encoder. When a video file is already encoded in a video coding format and needs to be encoded in another, we often use the term \textbf{transcoding}.
+The process of compressing a video is known as \textbf{encoding} and is carried out by an encoder. When a video file is already encoded in a video coding format and needs to be re-encoded in another one, we often use the term \textbf{transcoding}.
 
 In this section, we will go through the main techniques that are used by most video coding standards.
 
 \subsection{RGB vs Y'CbCr}
 \label{sec:bg/compression/ycbcr}
 
-The most basic form of compression can be obtained by converting individual pictures representing the video to a \textbf{color space} that better exploits the characteristics of human vision and then applying compression of some of the components in the new color space.
+The most basic form of compression can be obtained by converting individual pictures representing the video to a \textbf{color space} that better exploits the characteristics of human vision, and then applying compression of some of the components in the new color space.
 
-A very common color space family used in digital video and images is \textbf{Y'CbCr}, sometimes improperly called YUV (which refers to the analog domain), which takes advantage of the fact that the human vision system is much more sensitive to light variations (brightness) than to color. The Y'CbCr color space decomposes the color information of a pixel into three components:
+A very common color space family used in digital video and images is \textbf{Y'CbCr}, sometimes improperly called YUV (which refers to the analog domain). This color space takes advantage of the fact that the human vision system is much more sensitive to light variations (brightness) than to color. The Y'CbCr color space decomposes the color information of a pixel into three components:
 
 \begin{itemize}
     \item \textbf{Y'}: the luma\footnote{Sometimes called luminance, although luma is the correct term for digital video. Luma is the non-linear gamma-corrected representation of luminance.}, representing the brightness of the image;
@@ -25,18 +25,18 @@ A very common color space family used in digital video and images is \textbf{Y'C
     \item \textbf{Cr}: the red chroma component, representing a projection of the red color.
 \end{itemize}
 
-This approach is different from the common RGB (Red Green Blue) color space, where the luma is not isolated from the color components, and allows compression to be applied more effectively through the \textbf{chroma subsampling} technique. Chrome subsampling refers to the practice of reducing the resolution of the chroma components while keeping the luma at full resolution. Since our eyes are less sensitive to color than to brightness, we can reduce color resolution by even 75\% with almost no perceptual impact on quality.
+This approach is different from the common RGB (Red Green Blue) color space, where the luma is not isolated from the color components, and allows to apply compression more effectively through the \textbf{chroma subsampling} technique. Chrome subsampling refers to the practice of reducing the resolution of the chroma components while keeping the luma at full resolution. Since our eyes are less sensitive to color than to brightness, we can reduce color resolution by even 75\% with almost no perceptual impact on quality.
 
 The vast majority of digital video that can be found on the Internet or transmitted through digital television is compressed with the \textbf{Y'CbCr 4:2:0} color space, the most common format for non-professional content. In Y'CbCr 4:2:0, the luma component (Y') is encoded at full resolution, while the chroma components are stored at 1/4 of the resolution, that is, instead of storing 8 chroma samples for every 8 pixels, we only keep 2, as shown in Figure \ref{fig:yuv420}.
 
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.8\textwidth]{res/yuv420.png}
-	\caption{4:2:0 chroma subsampling. The 4 refers the width of the grid, which has (fixed) height 2. The 2 specifies that the horizontal resolution is halved (two "horizontal" samples), while the 0 that there are no different samples between the first and the second row.}
+	\caption{4:2:0 chroma subsampling. The 4 refers the width of the grid, which has a (fixed) height of 2. The 2 in the notation specifies that the horizontal resolution is halved (resulting in two "horizontal" samples), while the 0 that there are no different samples between the first and the second row.}
 	\label{fig:yuv420}
 \end{figure}
 
-When compared to a typical 8-bit RGB image (equivalent to Y'CbCr 4:4:4, i.e. no subsampling), requiring 24 bits per pixel, a Y'CbCr 4:2:0 image requires only 12 bits per pixel, resulting in a 50\% saving with very similar perceived quality. When using tools like \texttt{ffmpeg}, Y'CbCr 4:2:0 is often called \texttt{yuv420p} or similar.
+Compared to a typical 8-bit RGB image (equivalent to Y'CbCr 4:4:4, i.e. no subsampling), requiring 24 bits per pixel, a Y'CbCr 4:2:0 image requires only 12 bits per pixel, resulting in a 50\% saving with very similar perceived quality. When using tools like \texttt{ffmpeg}, Y'CbCr 4:2:0 is often called \texttt{yuv420p} or similar.
 
 \subsection{Inter-frame and intra-frame compression}
 \label{sec:bg/compression/intra-inter}
@@ -65,14 +65,14 @@ In general, a hybrid video codec works in three phases:\cite{h264}
             \item \textbf{Spatial prediction}: when encoding a block of the image, a prediction of the pixel values of the block is first calculated by looking at neighboring pixels. Statistically, pixels close to each other are expected to be similar due to spatial redundancy. Usually, this step consists of looking at the pixels on the left and/or top edges of the block. The predicted block is then subtracted from the current block to obtain a \textbf{residual block}, which is passed on to the next phase together with the information that tells how the prediction of the block was obtained.
         \end{itemize}
         
-    \item \textbf{Spatial model}: in most codecs, this phase consists in compressing the residual frame through a transform and quantization step, followed by the encoding of the obtained coefficients.
+    \item \textbf{Spatial model}: in most codecs, this phase consists of compressing the residual frame through a transform and quantization step, followed by the encoding of the obtained coefficients.
         \begin{itemize}
             \item The \textbf{transform} step often consists in applying the \textbf{Discrete Cosine Transform} (DCT) to transform the blocks from the space to the frequency domain. The output of the DCT is a matrix of coefficients, which can be used to faithfully reconstruct the original block, although without achieving any compression.
-            \item In the \textbf{quantization} step, coefficients that have insignificant impact, such as values that are close to zero, are discarded, enabling to represent the original block with some approximation by storing a smaller number of DCT coefficients (the non-discarded ones). In the decoder, the subset of coefficients can then be fed into the \textbf{IDCT} (the inverse of the transform), obtaining a reconstruction of the original block. The fidelity of the reconstruction depends on how strong the quantization step was, that is in practice on the \textbf{quantization parameter} (QP).
+            \item In the \textbf{quantization} step, coefficients that have insignificant impact, such as values that are close to zero, are discarded, enabling to represent the original block with some approximation by storing a smaller number of DCT coefficients (the non-discarded ones). In the decoder, the subset of coefficients can then be fed into the \textbf{IDCT} (the inverse of the transform), obtaining a reconstruction of the original block. The fidelity of the reconstruction depends on how strong the quantization step was, that is, in practice, on the \textbf{quantization parameter} (QP).
             \item After quantization, the remaining coefficients are reordered through a \textbf{zigzag scan} of the matrix, so that the most significant coefficients will be at the beginning of the sequence (a typical property of the DCT), and then encoded through \textbf{Run-Level Encoding} (RLE).
         \end{itemize}
      
-    \item \textbf{Entropy coding}: in this phase, all the information collected in previous phases, including quantized coefficients, quantization parameters and motion vectors, is encoded in a bit stream. To exploit the statistical redundancy of symbols in the data, techniques like \textbf{Variable-Length Coding} (VLC), such as Huffman coding, or arithmetic coding and \textbf{Context-aware Arithmetic Encoding} (CAE) are used, achieving further compression.
+    \item \textbf{Entropy coding}: in this phase, all the information collected in previous phases, including quantized coefficients, quantization parameters and motion vectors, is encoded in a bit stream. To exploit the statistical redundancy of symbols in the data, techniques like \textbf{Variable-Length Coding} (VLC), including Huffman coding, or arithmetic coding and \textbf{Context-aware Arithmetic Encoding} (CAE) are used, achieving further compression.
 \end{itemize}
 
 \begin{figure}[hb]
@@ -89,7 +89,7 @@ The output of a hybrid video encoder is a \textit{bit stream} (or \textit{bitstr
 \subsection{Frame types and GOP}
 \label{sec:bg/compression/gop}
 
-As we have seen, the prediction model can be based on temporal (inter-frame) prediction or spatial (intra-frame) prediction. The type of prediction that is used and which reference frames are used for the prediction determine the type of frame. In particular:
+As we have seen, the prediction model can be based on temporal (inter-frame) prediction or spatial (intra-frame) prediction. The type of prediction and which reference frames are used for the prediction determine the type of frame. In particular:
 
 \begin{itemize}
     \item \textbf{I-frames} (\textit{Intra-frames}) are frames that do not require any other frames to be decoded and are thus compressed only by intra-frame prediction.
@@ -97,16 +97,16 @@ As we have seen, the prediction model can be based on temporal (inter-frame) pre
     \item \textbf{B-frames} (\textit{Bi-directional predicted frames}) are frames that can reference both previous and future frames as reference frames in temporal prediction. They are more computationally expensive to encode, but are usually the most compressible ones.
 \end{itemize}
 
-Because of inter-frame dependencies, the display order of frames is very often different from the decoding order. For this reason, in codecs jargon there is the distinction between Presentation Time Stamps (PTS), and Decode Time Stamps (DTS).
+Because of inter-frame dependencies, the display order of frames is very often different from the decoding order. For this reason, in codecs jargon there is the distinction between \textbf{Presentation Time Stamps} (PTS), and \textbf{Decode Time Stamps} (DTS).
 
-Depending on the type of frames that are used to encode a video sequence, different \textbf{prediction structures} can be obtained. For example, low delay applications could use a structure like the one in figure \ref{fig:codec_gop1}, where only I-frames and P-frames are used and P-frames always reference the previous frame. I-frames should be inserted into the stream periodically to allow more efficient random access (\textit{seeking}). Another reason is that in some cases scene cuts might justify the use of an I-frame instead of a P-frame, depending on how drastic the scene change is.
+Depending on the type of frames that are used to encode a video sequence, different \textbf{prediction structures} can be obtained. For example, low delay applications could use a structure like the one in Figure \ref{fig:codec_gop1}, where only I-frames and P-frames are used and P-frames always reference the previous frame. I-frames should be inserted into the stream periodically to allow more efficient random access (\textit{seeking}). Another reason is that in some cases scene cuts might justify the use of an I-frame instead of a P-frame, depending on how drastic the scene change is.
 
-\begin{figure}
+\begin{figure}[h]
 	\centering
 	
 	\includegraphics[width=0.9\textwidth]{res/gop1.png}
 	
-	\caption{Simple GOP structure with no B-frames.}
+	\caption{Simple GOP structure with no B-frames.\cite{h264}}
 	\label{fig:codec_gop1}
 \end{figure}
 
@@ -114,7 +114,7 @@ Most of the time, the arrangement of the frames is much more complex and is usua
 
 The structure of a GOP can be summarized as a string sequence, like \texttt{IBBPBBPBBPBBI}, or through two numbers, \texttt{M} and \texttt{N}, that respectively determine the distance between P-frames, and the GOP size. For example, the structure in Figure \ref{fig:codec_gop2} can be expressed as \texttt{M=3, N=12}.
 
-\begin{figure}
+\begin{figure}[h]
 	\centering
 	
 	\includegraphics[width=0.8\textwidth]{res/gop2.png}
@@ -126,15 +126,15 @@ The structure of a GOP can be summarized as a string sequence, like \texttt{IBBP
 \subsection{Popular video coding formats}
 \label{sec:bg/compression/codecs}
 
-The dominant video coding standard is currently \textbf{H.264}, sometimes referred to as \textit{Advanced Video Coding} (AVC) or \textit{MPEG-4 Part 10}, developed by a joint team of the ITU (Video Coding Experts Group) and ISO (Moving Picture Experts Group, or \textbf{MPEG}). H.264 was first standardized in 2003, nevertheless it is estimated that H.264 is still used today by more than 80\% of the companies in the industry, thanks to its good performance (both in terms of compression and encoding/decoding efficiency) and the accessible royalties structure.\cite{bitmovin}
+The dominant video coding standard is currently \textbf{H.264}, sometimes referred to as \textit{Advanced Video Coding} (AVC) or \textit{MPEG-4 Part 10}, developed by a joint team of the ITU (Video Coding Experts Group) and ISO (Moving Picture Experts Group, or \textbf{MPEG}). H.264 was first standardized in 2003; nevertheless, it is estimated that H.264 is still used today by more than 80\% of the companies in the industry, thanks to its good performance (both in terms of compression and encoding/decoding efficiency) and the accessible royalties structure.\cite{bitmovin}
 
 It is worth noting that the H.264 standard only defines the format and syntax of the H.264 bitstream and how to decode it, but it does not specify how to actually encode a video. Therefore, the term \textit{codec} should only be used to refer to the actual implementations of H.264, which typically include both an encoder and a decoder.
 
-The successor of H.264, first published in 2013, is \textbf{H.265}, also named \textit{High Efficiency Video Coding} (HEVC) or \textit{MPEG-H Part 2}, which provides better compression of 25\% to 50\% better compression at the same bitrate compared to H.264. It is especially suitable for high-resolution content such as 4K UHD, but struggled to reach wide adoption due to the complex and expensive royalties structure that slowed down hardware support.\cite{hevcroyalties}
+The successor of H.264, first published in 2013, is \textbf{H.265}, also known as \textit{High Efficiency Video Coding} (HEVC) or \textit{MPEG-H Part 2}, which provides 25\% to 50\% better compression at the same bitrate in comparison to H.264. It is especially suitable for high-resolution content such as 4K UHD, but it struggled to reach wide adoption due to the complex and expensive royalties structure that slowed down hardware support.\cite{hevcroyalties}
 
 In competition with the H.26x family of formats, Google released royalty-free \textbf{VP8} in 2008, followed by \textbf{VP9} in 2012. Thanks to Google controlling a large fraction of the browser market share and the YouTube streaming platform, VP9 became a popular alternative to H.264, often delivering better video compression ratios with comparable quality.\cite{bitmovin}
 
-The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies such as Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA, Intel, among others.\footnote{\url{https://aomedia.org/membership/members/}} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content such as 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex, codec implementations are often prohibitively expensive to run in software, thus requiring hardware support. However, having widespread hardware support is an effort that can take quite a few years.\cite{av1}
+The successor to VP9 was incorporated into \textbf{AV1} (first released in 2018), the royalty-free video format developed by the \textit{Alliance for Open Media} (AOMedia), an initiative backed by large companies such as Google, Apple, Meta, Microsoft, Amazon, Netflix, Cisco, NVIDIA and Intel, among others.\footnote{\url{https://aomedia.org/membership/members/}} AV1 is much more complex than H.264 and achieves up to 50\% better compression when compared to H.265, making it especially suitable for high-resolution content such as 4K UHD or 8K UHD. The downside of AV1 is that since it is quite complex, codec implementations are often prohibitively expensive to run in software, thus requiring hardware support. However, having widespread hardware support is an effort that can take quite a few years.\cite{av1}
 
 \subsubsection{H.264}
 \label{sec:bg/compression/codecs/h264}
@@ -152,9 +152,9 @@ As we have seen, H.264 is still the dominant video format in the industry. Since
 
 H.264 is based on the hybrid codec model we have introduced earlier. In H.264, video frames are divided into 16x16 pixels \textbf{macroblocks} (MB), on which the prediction model is applied. Macroblocks can be split into partitions that can be as small as 4x4 pixels (not necessarily square), so that the same macroblock can reference different macroblocks, possibly in different reference frames.
 
-In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51 and is usually adjusted automatically by the encoded depending on the input configuration. Finally, for the entropy coding step, H.264 supports both variable-length coding and arithmetic coding techniques.
+In H.264, the transform is an approximation of the DCT and can be applied on 4x4 or 8x8 blocks. Quantization can be controlled by the QP parameter, or step size, which ranges from 0 to 51 and is usually adjusted automatically by the encoder depending on the input configuration. Finally, for the entropy coding step, H.264 supports both the variable-length coding (VLC) and arithmetic coding (CABAC) techniques.
 
-As not every device is capable of supporting all features of the standard, H.264 includes the concept of profiles and levels. A \textbf{profile} defines the H.264 features the decoder must support to be able to decode the compressed video. Common profiles are: the baseline profile, which does not include support for B-slices\footnote{In H.264 the concept of I-frames, P-frames and B-frames is replaced by the slices equivalent. A slice is a subset of macroblocks contained in a video frame.} or CABAC\footnote{Context-aware Arithmetic Coding.}; the main profile, which supports both B-slices and CABAC; the high profile, which includes additional optimizations such as adaptive selection of the block size for the transform step. The \textbf{level} instead specifies an upper limit on frame size, decoding rate, and memory required to decode the video.
+As not every device is capable of supporting all the features of the standard, H.264 includes the concept of profiles and levels. A \textbf{profile} defines the H.264 features the decoder must support to be able to decode the compressed video. Common profiles are: the baseline profile, which does not include support for B-slices\footnote{In H.264 the concept of I-frames, P-frames and B-frames is replaced by the slices equivalent. A slice is a subset of macroblocks contained in a video frame.} or CABAC; the main profile, which supports both B-slices and CABAC; the high profile, which includes additional optimizations such as adaptive selection of the block size for the transform step. The \textbf{level} instead specifies an upper limit on frame size, decoding rate, and memory required to decode the video.
 
 Finally, an important part of H.264 is the syntax of the coded bitstream. The H.264 data is organized into a sequence of packets known as \textbf{Network Abstraction Layer Units} (NAL units or \textbf{NALUs}). Since units can be of varying length, there should be a way to distinguish when a unit ends and the next one begins. There are mainly two approaches to solve this problem:
 
@@ -188,25 +188,25 @@ In the AAC bitstream, audio samples are organized into packets that contain a fi
 
 Bitstreams produced by video and audio encoders often do not contain enough information to allow video players to actually play the video or audio file. For example, in H.264 the timing information is optional and without it the decoder does not know how to assign timestamps to individual video frames, or even determine the duration of the video.\cite{h264itu} In AAC, the raw frames do not contain information such as the sample rate or the variant of AAC used to encode the samples.\cite{aac}
 
-\textbf{Container formats} solve this problem by wrapping the bitstreams in a structure that is common between different coding formats. Container formats also allow the grouping of multiple video, audio and subtitle tracks, an operation known as \textbf{muxing} (from \textit{multiplexing}) performed by \textbf{muxers}. Instead, the process of extracting tracks from a container format is known as \textbf{demuxing}.
+\textbf{Container formats} solve this problem by wrapping the bitstreams in a structure that is common between different coding formats. Container formats also allow the grouping of multiple video, audio and subtitle tracks, an operation known as \textbf{muxing} (from \textit{multiplexing}) and performed by \textbf{muxers}. The inverse process of extracting tracks from a container format is instead known as \textbf{demuxing}.
 
-Two popular container formats used in the context of video streaming are \textbf{MPEG-2 Transport Stream} and \textbf{MP4}.
+Two popular container formats used in the context of video streaming are \textbf{MPEG-2 Transport Stream} and \textbf{MP4}/\textbf{Fragmented MP4}.
 
 \subsection{MPEG-2 Transport Stream}
 \label{sec:bg/containers/mpeg2ts}
 
 MPEG-2 Transport Stream (or \textbf{MPEG-2 TS}), defined by the MPEG-2 Part 1 standard, is a container format originally designed for digital television broadcasting systems. For this reason, it includes features such as error correction and synchronization, providing protection against degraded transmission channels.
 
-In MPEG-2 TS, a transport stream is composed of multiple programs or services, which could be, for example, multiple TV channels. Each program can consist of multiple video and audio tracks, known as \textbf{elementary streams}, which are multiplexed to compose the transport stream. In each elementary stream, the raw coded data is packetized into packets known as PES packets (Packetized Elementary Stream), each having a fixed length of 188 bytes. The length of the packet includes headers, which transport data such as timing information. Hence, Transport Stream often has a non-negligible overhead.\cite{mpeg2ts}
+In MPEG-2 TS, a transport stream is composed of multiple programs or services, which could correspond, for example, to different TV channels. Each program can consist of multiple video and audio tracks, known as \textbf{elementary streams}, multiplexed to compose the transport stream. In each elementary stream, the raw coded data is packetized into packets known as PES packets (Packetized Elementary Stream), each having a fixed length of 188 bytes. The length of the packet includes headers, which transport data such as timing information. Hence, Transport Stream often has a non-negligible overhead.\cite{mpeg2ts}
 
-An H.264 bitstream muxed in an MPEG-2 stream must be in the Annex B format (i.e. with start codes).
+An H.264 bitstream muxed in an MPEG-2 stream must be in the Annex B format (i.e. with start codes before NAL units).
 
 \subsection{MP4 and fragmented MP4}
 \label{sec:bg/containers/mp4}
 
 MP4 is a container file format based on the \textbf{ISO Base Media File Format} (ISOBMFF). It was extended from Apple QuickTime File Format (\texttt{.mov}) and first published in 2001 as MPEG-4 Part 14.\footnote{The actual box structure is defined in MPEG-4 Part 12 (ISOBMFF).}\cite{mpeg4part12}
 
-In the \textbf{ISOBMFF} format the video and audio bitstreams, such as an H.264-compressed video, are stored as tracks and organized in a \textbf{box structure}. The MP4 format is capable of storing metadata such as video duration and per frame display and decoding timestamps, dealing with issues such as synchronization between tracks and random access (\textit{seeking}) of the media file.
+In the \textbf{ISOBMFF} format the video and audio bitstreams, such as an H.264-compressed video, are stored as tracks and organized in a \textbf{box structure}. The MP4 format is capable of storing metadata such as video duration and per frame display and decoding timestamps, dealing with issues such as synchronization between tracks and random access (seeking) of the media file.
 
 Some ISOBMFF box (or atom) types that are particularly relevant are:
 
@@ -218,9 +218,9 @@ Some ISOBMFF box (or atom) types that are particularly relevant are:
 
 An H.264 bitstream muxed in an MP4 container does not need start codes and therefore must not be in the Annex B format. H.264 bistreams in MP4 files are stored in a format known as \texttt{avcC}, where the H.264 NAL units are preceded by their length.
 
-A typical structure of an MP4 file consists of a \texttt{ftyp} box followed by a \texttt{moov} box (containing the tracks metadata), and finally the actual data stored in a \texttt{mdat} box. The \texttt{moov} box is sometimes placed at the end of the file, since the information required to create the box is often available only at the end of the encoding process.
+A typical structure of an MP4 file consists of a \texttt{ftyp} box followed by a \texttt{moov} box (containing the tracks metadata), and finally the actual data stored in a \texttt{mdat} box. The \texttt{moov} box is sometimes placed at the end of the file, since the information required to create the box is typically available only at the end of the encoding process.
 
-For some use cases, such as adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \textbf{fMP4}. In this format, the sequence is divided into fragments that can be transmitted and played independently. The structure of an fMP4 file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, like the fragment index and the timestamp, and the \texttt{mdat} contains the video or audio samples for a single fragment (typically a few seconds of content).
+For some use cases, such as adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \textbf{fMP4}. In this format, the sequence is divided into fragments that can be transmitted and played independently. The structure of an fMP4 file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, such as the fragment index and the timestamp, and the \texttt{mdat} contains the video or audio samples for a single fragment (typically a few seconds of content).
 
 \begin{figure}
 	\centering
@@ -284,22 +284,22 @@ In a typical live streaming architecture, we can generally distinguish three mai
 
 \textbf{Ingestion} refers to the process of making the input feed available to the transcoder server for processing. Often, this means having a client push the stream through an ingestion protocol such as \textbf{Real Time Messaging Protocol} (RTMP) or \textbf{Secure Reliable Transport} (SRT). In some cases, a more suitable approach is a pull-based one, where it is the backend system's responsibility to "pull" the video and audio streams from another system and pass them onto the pipeline.
 
-Usually, the input feed is a high-bitrate/high-quality stream that is not suitable for streaming. The de facto standard for video streaming in the industry is \textbf{Adaptive Bitrate Streaming} (ABR) or \textbf{HTTP Adaptive Streaming} (HAS), which is based on the idea of producing multiple video renditions in advance on the server side, each of them having different encoding parameters, such as video resolution, framerate, and most importantly average/peak bitrate. The aim is to provide the client with the best video variant according to the estimated network throughput. The two main ABR protocols are \textbf{MPEG-DASH} and \textbf{Apple HLS}, as we will see in detail.
+Usually, the input feed is a high-bitrate/high-quality stream that is not suitable for streaming. The de facto standard for video streaming in the industry is \textbf{Adaptive Bitrate Streaming} (ABR) or \textbf{HTTP Adaptive Streaming} (HAS), which is based on the idea of producing multiple video renditions in advance on the server side, each of them having different encoding parameters, such as video resolution, framerate and most importantly average/peak bitrate. The aim is to provide the client with the best video variant according to the estimated network throughput. The two main ABR protocols in the industry are \textbf{MPEG-DASH} and \textbf{Apple HLS}, as we will see in detail.
 
-In order to allow clients to switch to a different video rendition when network conditions change, video files are split into small segments with a fixed duration that is usually between 4 and 10 seconds. At each segment boundary, the client can choose to switch to a different quality level by simply starting to download video segments of another rendition. The strategy that determines which video quality level to request is usually implemented on the client side by making use of \textbf{rate adaptation algorithms}.
+In order to allow clients to switch to a different video rendition when network conditions change, video files are split into small segments with a fixed duration that is usually between 2 and 10 seconds. At each segment boundary, the client can choose to switch to a different quality level by simply starting to download video segments of another rendition. The strategy that determines which video quality level should be requested next is usually implemented on the client side by \textbf{rate adaptation algorithms}.
 
-Video segment files can be generated statically and published on a web server (\textbf{static packaging}) or dynamically generated on the fly (\textbf{dynamic packaging} or Just-In-Time packaging). The packaging step is performed by a \textbf{packager}, or segmenter, which also produces the metadata that allows the client to obtain the list of video renditions (identified by their bitrate and other encoding parameters) and the list of segment files for each rendition. In MPEG-DASH, there is a single-file manifest containing this information, while with HLS there are multiple playlist files.
+Video segment files can be generated statically and published on a web server (\textbf{static packaging}) or dynamically on the fly (\textbf{dynamic packaging} or Just-In-Time packaging). The packaging step is performed by a \textbf{packager}, or segmenter, which also produces the metadata that allows the client to obtain the list of video renditions (identified by their bitrate and other encoding parameters) and the list of segment files for each rendition. In MPEG-DASH, there is a single-file manifest containing this information, while in HLS there are multiple playlist files.
 
-It should be noted that the video and audio files produced by this step need to be in a coding and container format compatible with the adaptive bitrate technology chosen. For example, MPEG-DASH (see Section \ref{sec:bg/technologies/dash}) requires streams to be muxed in a fragmented MP4 container. Also, for best performance, the segments should start with an I-frame, so that the player can switch between renditions at segment boundaries. For this reason, the GOP size of the renditions should match the length of the segment. Another important thing to take into account is the bitrate, which should not oscillate too much so that the bitrate adaption algorithms can use the average bitrate as a reference value to make decisions.\cite{ozer}
+It should be noted that the video and audio files produced by this step need to be in a coding and container format compatible with the chosen adaptive bitrate technology. For example, MPEG-DASH (see Section \ref{sec:bg/technologies/dash}) requires streams to be muxed in a fragmented MP4 container. Also, for best performance, the segments should start with an I-frame, so that the player can switch between renditions at segment boundaries. For this reason, the GOP size of the renditions should match the length of the segment. Another important thing to take into account is the bitrate, which should not oscillate too much so that the bitrate adaptation algorithms can use the average bitrate as a reference value to make decisions.\cite{ozer}
 
-Although ABR streaming is a generic term for adaptive bitrate technologies, most of the time segmented video and audio tracks and manifest files are delivered to the client through the \textbf{Hypertext Transfer Protocol} (HTTP). Using HTTP for \textbf{distribution} makes it easy for streaming platforms to scale, thanks to the widespread availability of \textbf{Content Delivery Networks} (CDN) and their global distribution networks. One of the important advantages of relying on CDNs is the possibility to cache video segments at the edge of the networks, as close as possible to the final users, therefore reducing latency and probability of congestion.
+Although ABR streaming is a generic term for adaptive bitrate technologies, most of the time segmented video and audio tracks and manifest files are delivered to the client through the \textbf{Hypertext Transfer Protocol} (HTTP). Using HTTP for \textbf{distribution} makes it easy for streaming platforms to scale, thanks to the widespread availability of \textbf{Content Delivery Networks} (CDN) and their global distribution networks. One of the important advantages of relying on CDNs is the possibility to cache video segments at the edge of the networks, as close as possible to the final users, therefore reducing latency and the probability of congestion.
 
-Also, transporting video traffic over HTTP instead of, for example, UDP avoids issues with firewalls and is, in general, highly reliable since video becomes normal HTTP traffic. Apart from scalability, mentioned above, this approach makes it possible to take advantage of important HTTP features, such as HTTPS for secure communication.
+Also, transporting video traffic over HTTP instead of, for example, UDP avoids issues with firewalls and is in general highly reliable, since video becomes normal HTTP traffic. Apart from scalability, mentioned above, this approach makes it possible to take advantage of important HTTP features such as HTTPS for secure communication.
 
 \subsection{Apple HTTP Live Streaming (HLS)}
 \label{sec:bg/abr/hls}
 
-HTTP Live Streaming (HLS) is an adaptive streaming protocol based on HTTP designed by Apple. First introduced in 2009 and later standardized as RFC 9216, it is estimated to be the most popular streaming protocol, with more than 73\% video developers using it.\cite{rfc8216}\cite{bitmovin} The reason for this is not only the fact that HLS is the only HAS protocol that can be used on Apple mobile devices, but also the simplicity of the protocol.
+HTTP Live Streaming (HLS) is an adaptive streaming protocol based on HTTP designed by Apple. First introduced in 2009 and later standardized as RFC 9216, it is estimated to be the most popular streaming protocol, with more than 73\% video developers using it.\cite{rfc8216}\cite{bitmovin} The reason for this is not only the fact that HLS is the only HAS protocol that can be used on Apple mobile devices, but also that it is a simple protocol to understand and implement.
 
 HLS uses the \textbf{extended M3U format} (\texttt{.m3u8} extension) to define a set of playlists that contain information such as the list of streams or the list of segments for a particular stream. In particular, a \textbf{master playlist} provides a set of variant streams\footnote{In the HLS RFC, the terms \textit{variant} and \textit{rendition} have different meanings. We will use the term \textit{variant} in this section to adhere to the RFC, while using the two terms interchangeably in the rest of the thesis.}, each of which is a different version of the same content, usually differing by bitrate and other encoding parameters. Players download the master playlist at the beginning of the playback session and use the information contained in it to adapt to network conditions by switching between variants. An example of a master playlist is shown in Figure \ref{fig:hls_master}.
 
@@ -340,7 +340,7 @@ segment-3.ts
 	\label{fig:hls_media}
 \end{figure}
 
-The HLS media segments can be muxed into the MPEG-2 TS format (\texttt{.ts} files) or in the fragmented MP4 format (\texttt{.mp4} or \texttt{.m4s} files). The supported video codecs are H.264 and H.265. When using \texttt{fMP4} as the container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes with the \texttt{\#EXT-X-MAP} tag.
+The HLS media segments can be muxed into the MPEG-2 TS format (\texttt{.ts} files) or in the fragmented MP4 format (\texttt{.mp4} or \texttt{.m4s} files). The supported video codecs are H.264 and H.265. When using fMP4 as the container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes with the \texttt{\#EXT-X-MAP} tag.
 
 In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams, which are often taken as "safe" practices in the industry when producing content for adaptive bitrate streaming.\cite{hlsauthoring}
 
@@ -352,28 +352,28 @@ The authoring specification provides a set of recommendations to ensure compatib
     \item A recommendation for a segment duration of 6 seconds, although 4 seconds or lower are common values in practice.\cite{ozer}
 \end{itemize}
 
-HLS also includes support for encryption, ads, trick play (scrubbing and fast forward), subtitles, and multiple audio tracks.
+HLS also includes support for encryption, ads, trick play (scrubbing and fast forward), subtitles and multiple audio tracks.
 
-There is a variant of HLS, known as \textbf{Low-Latency HLS} (LL-HLS), which is designed for low-latency live streaming. It is based on a technique called \textit{Blocking Preload Hints}, which relies on the fact that segments are made available in smaller parts called partial segments, which are published as soon as possible and can thus be downloaded before the full segment is made available. The HLS manifest now contains a "hint" about which partial segment should be requested next, so that the client can send the HTTP request before the partial segment is actually available. The server will “block” and respond with the part as soon as it is available. LL-HLS has a mandatory requirement for HTTP/2, therefore we did not take into consideration for the work in this thesis, which focuses on HTTP/3.
+There is a variant of HLS, known as \textbf{Low-Latency HLS} (LL-HLS), which is designed for low-latency live streaming. It is based on a technique called \textit{Blocking Preload Hints}, which relies on the fact that segments are made available in smaller parts called partial segments, which are published as soon as possible and can thus be downloaded before the full segment is made available. The HLS manifest now contains a "hint" about which partial segment should be requested next, so that the client can send the HTTP request before the partial segment is actually available. The server will “block” and respond with the part as soon as it is available. LL-HLS has a mandatory requirement for HTTP/2, therefore we did not take it into consideration for the work in this thesis, which focuses on HTTP/3.
 
 \subsection{MPEG Dynamic Adaptive Streaming over HTTP (DASH)}
 \label{sec:bg/technologies/dash}
 
-MPEG Dynamic Adaptive Streaming over HTTP (DASH) is an alternative to HLS for adaptive streaming over HTTP. It was developed by the MPEG group and first published in 2012. Since it is the officially supported ABR protocol on HbbTV, the entertainment system for smart TV, it gained popularity and is often mandatory for streaming platforms that want to target TVs. It is not supported on iOS and Apple TV, so HLS is often still an easier choice to ensure broad compatibility.
+MPEG Dynamic Adaptive Streaming over HTTP (DASH) is an alternative to HLS for adaptive streaming over HTTP. It was developed by the MPEG group and first published in 2012. Since it is the officially supported ABR protocol on HbbTV, the entertainment system for smart TVs, it gained popularity and is often mandatory for streaming platforms that want to target TVs. It is not supported on iOS and Apple TV, so HLS is often still an easier choice to ensure broad compatibility.
 
-DASH is a very complex standard, so we will just give a broad overview of how it works.\cite{dash}\cite{dash2} The are several differences between HLS and DASH:
+DASH is a very complex standard, so we will just give a general overview of how it works.\cite{dash}\cite{dash2} There are several differences between HLS and DASH:
 
 \begin{itemize}
-    \item Unlike HLS, DASH is codec-agnostic, therefore it can be used with any codec without waiting the standard to be updated.
-    \item It uses the \texttt{fMP4} container format by default, thus reducing the overhead introduced by MPEG-2 TS.
+    \item Unlike HLS, DASH is codec-agnostic, therefore it can be used with any codec without waiting for the standard to be updated.
+    \item It uses the fMP4 container format by default, thus reducing the overhead introduced by MPEG-2 TS.
     \item DASH does not use M3U playlists: there is a single manifest file (\texttt{.mpd} extension) in XML format.
 \end{itemize}
 
 The manifest file has a nested structure that combines the equivalent of the master and media playlists of HLS. The main elements in a DASH manifest file are:\footnote{\url{https://www.brendanlong.com/the-structure-of-an-mpeg-dash-mpd.html}}
 
 \begin{itemize}
-    \item \textbf{Adaption sets}: they define a group of representations (renditions) on which adaptation algorithms are executed. A common approach is to have one video adaptation set and multiple audio adaptation sets depending on the number of supported audio languages.
-    \item \textbf{Representations}: they represent the individual renditions in an adpatation set. Each representation usually has different encoding parameters, such as the bitrate, resolution and framerate, but could also have different codecs.
+    \item \textbf{Adaptation sets}: they define a group of representations (renditions) on which adaptation algorithms are executed. A common approach is to have one video adaptation set and multiple audio adaptation sets depending on the number of supported audio languages.
+    \item \textbf{Representations}: they represent the individual renditions in an adaptation set. Each representation usually has different encoding parameters, such as the bitrate, resolution and framerate, but could also have different codecs.
     \item \textbf{Media segments}: within a representation, there are multiple ways to specify how the player should obtain the media segments. For example, with \texttt{SegmentList} we can insert the full list of segments in the manifest file. A smarter approach is to use the \texttt{SegmentTemplate} element, which allows the packager to define a pattern for predictable sequences of segments.
     \item \textbf{Index segments}: they are the equivalent of the initialization segment, introduced with HLS.
 \end{itemize}
@@ -417,16 +417,16 @@ A minimal example of a DASH manifest file is shown in Figure \ref{fig:dash_manif
     \label{fig:dash_manifest}
 \end{figure}
 
-In the example of Figure \ref{fig:dash_manifest}, the \texttt{type} field is set to \texttt{static}, which means that this manifest is for on-demand content. In the case of a live stream, the \texttt{type} has value \texttt{dynamic} and some additional fields are required. For example, the \texttt{availabilityStartTime} field specifies the timestamp corresponding to the start of the live stream, and is used by the player to calculate which segment should be requested next. Another important field is the \texttt{suggestedPresentationDelay}, which determines the target live latency (which can be overridden by the player).
+In the example of Figure \ref{fig:dash_manifest}, the \texttt{type} field is set to \texttt{static}, which means that this manifest is for on-demand content. In the case of a live stream, the \texttt{type} has value \texttt{dynamic} and some additional fields are required. For example, the \texttt{availabilityStartTime} field specifies the timestamp corresponding to the start of the live stream, and is used by the player to calculate which segment should be requested next. Another important field is the \texttt{suggestedPresentationDelay}, which determines the live latency target (which can be overridden by the player).
 
-The MPEG-DASH standard also has an extension for low-latency streaming, known as \textbf{Low-Latency DASH} (LL-DASH). The approach of LL-DASH is conceptually similar to that of LL-HLS, but is technically implemented in a different way. Specifically, it takes advantage of the \textit{Chunked Transfer Encoding} (CTE) feature of HTTP/1.1. Similarly to LL-HLS, LL-DASH makes use of chunks which can be downloaded as soon as they are published. The client sends a single HTTP request per segment and waits for chunks to be delivered through HTTP CTE, decoding and playing them as soon as possible. Compared to LL-HLS, LL-DASH has a smaller overhead since it sends a much lower number of HTTP requests.\cite{llhls_vs_lldash}
+The MPEG-DASH standard also has an extension for low-latency streaming, known as \textbf{Low-Latency DASH} (LL-DASH). The approach of LL-DASH is conceptually similar to that of LL-HLS, but is technically implemented in a different way. Specifically, it takes advantage of the \textit{Chunked Transfer Encoding} (CTE) feature of HTTP/1.1. Similarly to LL-HLS, LL-DASH makes use of chunks that can be downloaded as soon as they are published. The client sends a single HTTP request per segment and waits for chunks to be delivered through HTTP CTE, decoding and playing them as soon as possible. Compared to LL-HLS, LL-DASH has a smaller overhead since it sends a much lower number of HTTP requests.\cite{llhls_vs_lldash}
 
 \subsection{Common Media Application Format (CMAF)}
 \label{sec:bg/technologies/cmaf}
 
 Before Apple introduced support for fMP4 segments in 2016, a common issue for video platforms was that supporting both HLS and DASH required two copies of the same content, one in MPEG-2 TS format and the other in fMP4. This was needed because not all platforms support HLS and vice versa.
 
-This problem led to the proposal and standardization of \textbf{Common Media Application Format} (CMAF), a common specification that defines how media should be packaged and segmented for delivery. Fragmented MP4 is a CMAF-compatible format and since it is supported by both HLS and DASH it can lead to significant savings. Video platforms can, in fact, produce and store a single set of video segment files and deliver them to all devices.\cite{cmaf}
+This problem led to the proposal and standardization of \textbf{Common Media Application Format} (CMAF), a common specification that defines how media should be packaged and segmented for delivery. Fragmented MP4 is a CMAF-compatible format and, since it is supported by both HLS and DASH, it can lead to significant savings. Video platforms can, in fact, produce and store a single set of video segment files and deliver them to all devices.\cite{cmaf}
 
 \subsection{Media Source Extensions (MSE)}
 \label{sec:bg/technologies/mse}
@@ -437,18 +437,18 @@ MSE is a set of APIs that abstract the implementation of media playback in the b
 
 More in detail, MSE defines the \texttt{MediaSource} type as a source of media data for the \texttt{<video>} or \texttt{<audio>} HTML5 media elements, to which a \texttt{MediaSource} is attached. The client code interacts with the \texttt{MediaSource} to push new data, while the media elements fetch the data from the \texttt{MediaSource}.
 
-\texttt{MediaSource} instances expose methods to attach a set of \texttt{SourceBuffer} objects, which represent individual media tracks like a video or audio streams. When new media data is available, such as a new video segments, the client calls the \texttt{appendBuffer()} method on the corresponding \texttt{SourceBuffer}, providing the new data for the track to the browser. The bytes of data must of course conform to the format set when creating the \texttt{SourceBuffer}, which must be supported by the browser. Most of the time this means the ISOBMFF (\texttt{fMP4}) or WebM container formats. Codec support instead often depends on the browser build/configuration and platform.
+\texttt{MediaSource} instances expose methods for attaching a set of \texttt{SourceBuffer} objects, which represent individual media tracks such as video or audio streams. When new media data is available, such as a new video segment, the client calls the \texttt{appendBuffer()} method on the corresponding \texttt{SourceBuffer}, providing the new data for the track to the browser. The bytes of data must of course conform to the format set when creating the \texttt{SourceBuffer}, which must be supported by the browser. Most of the time this means the ISOBMFF (fMP4) or WebM container formats. Codec support instead often depends on the browser build/configuration and platform.
 
-The libraries that implement HLS or DASH must take care of parsing the manifest files, downloading the segments, implementing rate adaption algorithms, potentially transmuxing from MPEG-2 TS to fragmented MP4 (such as with HLS), appending segment data to the source buffers while leaving the MP4 demuxing and stream decoding tasks to the browser.
+The libraries that implement HLS or DASH must take care of parsing the manifest files, downloading the segments, implementing rate adaptation algorithms, possibly transmuxing from MPEG-2 TS to fragmented MP4, appending the media data to the source buffers while leaving the MP4 demuxing and stream decoding tasks to the browser.
 
-In practice, this means that there can be many implementations of HLS and DASH, all relying on the Media Source Extensions underneath. For HLS, a popular implementation is \texttt{HLS.js}\footnote{\url{https://github.com/video-dev/hls.js/}}, while for DASH the official reference implementation is \texttt{dash.js}\footnote{\url{https://github.com/Dash-Industry-Forum/dash.js/}}. Several other JavaScript players include support for HLS and DASH, such as \texttt{Video.js}, \texttt{Shaka Player}, \texttt{THEOPlayer}, and \texttt{JW Player}, some of which are open source while others are commercial.
+In practice, this means that there can be many implementations of HLS and DASH, all relying on the Media Source Extensions internally. For HLS, a popular implementation is \texttt{HLS.js}\footnote{\url{https://github.com/video-dev/hls.js/}}, while for DASH the official reference implementation is \texttt{dash.js}\footnote{\url{https://github.com/Dash-Industry-Forum/dash.js/}}. Several other JavaScript players include support for HLS and DASH, such as \texttt{Video.js}, \texttt{Shaka Player}, \texttt{THEOPlayer}, and \texttt{JW Player}, some of which are open source while others are commercial.
 
 \section{Hypertext Transfer Protocol (HTTP) evolution}
 \label{sec:bg/http}
 
-When browsing the Web, we use an application layer protocol known as \textbf{Hypertext Transfer Protocol} or \textbf{HTTP}. In addition to being used for transferring HTML web pages and related files, we have seen that HTTP can be used by apdative streaming technologies to deliver video and audio segments to the client.
+When browsing the Web, we use an application layer protocol known as \textbf{Hypertext Transfer Protocol} or \textbf{HTTP}. In addition to being used for transferring HTML web pages and related files, HTTP can also be used by adaptive streaming technologies to deliver video and audio segments to the client, as mentioned previously.
 
-In this section, we will briefly go through three important versions of HTTP, their limitations, peculiarities, and how they are currently exploited by HLS and DASH for video streaming applications.
+In this section, we will briefly go through three important versions of HTTP, with their limitations and peculiarities.
 
 \subsection{HTTP/1.1}
 \label{sec:bg/http1}
@@ -480,18 +480,18 @@ For encrypted communication, HTTPS uses \textbf{Transport Layer Security} (TLS) 
 
 When keep-alive (persistent connections) is enabled, the same connection can be reused to send multiple HTTP requests, avoiding the overhead of establishing a new TCP connection and TLS session. HTTP/1.1 also supports request pipelining, meaning that multiple requests can be sent on the same TCP connection before receiving the responses, although it is rarely used because not all server implementations support it properly.
 
-The main limitation of HTTP/1.1 is, however, that it does not support multiplexing of responses, meaning that responses must be transmitted sequentially by the server. This causes a problem known as \textbf{HTTP head-of-line blocking}, where the current request blocks the following requests. Browsers try to workaround this issue by opening multiple TCP connections to the same web server when loading web pages, up to a (configurable) limit.\footnote{For example, Firefox uses 6 as a default connection limit, but the value can be changed through the \texttt{network.http.max-persistent-connections-per-server} preference.} 
+The main limitation of HTTP/1.1 is, however, that it does not support multiplexing of responses, meaning that responses must be transmitted sequentially by the server. This causes a problem known as \textbf{HTTP head-of-line blocking}, where the current request blocks the following requests. In an attempt to work around this limitation, browsers typically open multiple TCP connections to the same web server when loading web pages, up to a (configurable) limit.\footnote{For example, Firefox uses 6 as a default connection limit, but the value can be changed through the \texttt{network.http.max-persistent-connections-per-server} preference.} 
 
 \subsection{HTTP/2}
 \label{sec:bg/http2}
 
 \textbf{HTTP/2}, published as a Proposed Standard in 2015 as RFC 7540, was an attempt to solve the main issues of HTTP/1.1, most notably the head-of-line blocking problem. At the same time, the aim of HTTP/2 was to use less network resources while reducing the perception of latency.\cite{http2}
 
-In HTTP/2, clients establish a \textbf{single TCP connection} with the server. To allow requests and responses \textbf{multiplexing}, the protocol introduces a binary framing format in which requests and responses, which maintain the same HTTP semantics as in HTTP/1.1, are split into smaller units, known as frames. Frames can be interleaved, allowing multiple requests and responses to be transmitted in parallel. In order to identify to which request a frame belongs to, the concept of \textbf{streams} was introduced. Streams can be seen as virtual connections that are very light to create and generally correspond to single HTTP requests. Streams can also be reset, with the effect of immediately stopping the transmission of the associated data frames.
+In HTTP/2, clients establish a \textbf{single TCP connection} with the server. To allow requests and responses \textbf{multiplexing}, the protocol introduces a binary framing format in which requests and responses, which maintain the same HTTP semantics as in HTTP/1.1, are split into smaller units, known as frames. Frames can be interleaved, allowing multiple requests and responses to be transmitted in parallel. In order to identify to which request a frame belongs to, the concept of \textbf{stream} is introduced. Streams can be seen as virtual connections that are very light to create and generally correspond to single HTTP requests. Streams can also be reset, with the effect of immediately stopping the transmission of the associated data frames.
 
-An important feature of HTTP/2 is \textbf{stream prioritization}. Since multiple streams can co-exist on the same TCP connection, there was the need for a mechanism to make better decisions on which stream goes first or is given priority. HTTP/2 allows clients to assign a \textbf{weight} between 1 and 256 to each stream, where a higher number means higher priority. In addition, clients can specify that a stream is dependent on another stream through its ID, effectively creating a \textbf{dependency tree}. The structure of the tree, and therefore the order in which requests are responded, is defined by the dependency relationships, while the division of resources between a set of "children" streams is determined by their weights.
+An important feature of HTTP/2 is \textbf{stream prioritization}. Since multiple streams can co-exist on the same TCP connection, there is the need for a mechanism to make better decisions on which stream goes first or is given priority. HTTP/2 allows clients to assign a \textbf{weight} between 1 and 256 to each stream, where a higher number means higher priority. In addition, clients can specify that a stream is dependent on another stream through its ID, effectively creating a \textbf{dependency tree}. The structure of the tree, and therefore the order in which requests are responded, is defined by the dependency relationships, while the division of resources between a set of "children" streams is determined by their weights.
 
-The dependency tree approach of HTTP/2 is very flexible and allows clients to implement different \textbf{multiplexing} or \textbf{prioritization strategies}, with widely different performance results. In \cite{http2pri}, Wijnants et al. examined the behavior of the main browsers to determine which prioritization scheme they implemented. It turns out that only Mozilla Firefox chose to adopt a complex tree-based strategy. Google Chrome implements a much simpler sequential FCFS approach based on dynamic weights (giving more weight to requests deemed more important according to heuristics), Microsoft Edge (legacy) uses a naive round-robin strategy with no weights at all, while Safari follows a weighted round-robin scheme. Surprisingly, the experimental results showed superior performance when using the relatively simple strategy implemented by Chrome.
+The dependency tree approach of HTTP/2 is very flexible and allows clients to implement different \textbf{multiplexing} or \textbf{prioritization strategies}, with widely different performance results. In \cite{http2pri}, Wijnants et al. examined the behavior of the main browsers to determine which prioritization scheme they implemented. It turns out that only Mozilla Firefox chose to adopt a complex tree-based approach. Google Chrome implements a much simpler sequential FCFS approach based on dynamic weights (giving more weight to requests deemed more important according to heuristics), Microsoft Edge (legacy) uses a naive round-robin strategy with no weights at all, while Safari follows a weighted round-robin scheme. Surprisingly, the experimental results showed superior performance when using the relatively simple strategy implemented by Chrome.
 
 \begin{figure}[h]
     \centering
@@ -505,18 +505,16 @@ The dependency tree approach of HTTP/2 is very flexible and allows clients to im
 \begin{figure}
     \centering
     \includegraphics[width=0.9\textwidth]{res/marx_h2pri_tree.png}
-    \caption{Graphical representation of the HTTP/2 dependency trees in the main web browsers. Courtesy of Robin Marx.\protect\footnotemark}
+    \caption{Graphical representation of the HTTP/2 dependency trees in the main web browsers. Courtesy of Robin Marx.}
     \label{fig:marx2}
 \end{figure}
 
-\footnotetext{\url{https://quic.edm.uhasselt.be/files/fosdem.pdf}}
-
 In HTTP/2, the use of HTTPS is mandatory, making the protocol more secure by design. HTTP/2 also achieves better performance by compressing headers, thanks to the \texttt{HPACK} compression algorithm. Finally, a feature known as \textbf{HTTP/2 Server Push} allows the server to push additional unsolicited content in response to HTTP requests, theoretically reducing the need for additional round-trip times to request resources.
 
-While all these features make sense, in practice HTTP/2 did not manage to provide the expected performance improvements, for multiple reasons:
+While all these features make sense from a theoretical point of view, in practice HTTP/2 did not manage to provide the expected performance improvements, for multiple reasons:
 
 \begin{itemize}
-    \item The \textbf{Server Push} feature never really took off, with virtually no CDN having support for Server Push. Additionally, in 2022 Google removed Server Push support from Google Chrome, citing extremely low usage, almost no gain in performance, and complexities in browser implementation. Instead, it suggested developers to use the \textbf{preload hints} or \textbf{103 Early Hints} features, which are easier to use and can provide significant performance gains.\footnote{\url{https://developer.chrome.com/blog/removing-push/}}
+    \item The \textbf{Server Push} feature never really took off, with virtually no CDN having support for Server Push. Additionally, in 2022 Google removed Server Push support from Google Chrome, citing extremely low usage, almost no gain in performance, and complexities in the browser implementation. Instead, it suggested developers to use the \textbf{preload hints} or \textbf{103 Early Hints} features, which are easier to use and can provide significant performance gains.\footnote{\url{https://developer.chrome.com/blog/removing-push/}}
     \item \textbf{Stream prioritization} was found to be inconsistently implemented by clients and servers, with a significant number of large CDNs apparently ignoring prioritization.\footnote{\url{https://github.com/andydavies/http2-prioritization-issues}} This led to the prioritization scheme of HTTP/2 being deprecated and replaced by a new mechanism at the same time HTTP/3 came out.
     \item When the \textbf{sequential prioritization strategy} is used, we get the same HTTP head-of-line blocking issue seen in HTTP/1.1, worsened by the fact that only a single TCP connection is used.
     \item The use of a single TCP connection leads to another problem known as \textbf{TCP head-of-line blocking}, where the bottleneck is not the HTTP design but TCP itself. In fact, while HTTP/2 multiplexes requests in multiple streams, at the transport layer TCP only sees a single opaque byte stream. As a consequence, TCP retransmissions delay the transmission of all streams and not just the one affected by packet loss. Additionally, TCP congestion control may reduce the throughput of the connection in case of congestion, affecting all the requests, while in HTTP/1.1 it is less likely that all the connections are affected at the same time.
@@ -525,16 +523,16 @@ While all these features make sense, in practice HTTP/2 did not manage to provid
 \subsection{HTTP/3}
 \label{sec:bg/http3}
 
-To overcome the limitations of TCP-based approaches, the next version of HTTP, \textbf{HTTP/3}, was based on a new transport protocol called QUIC, which is built on top of the lightweight UDP. While HTTP/3 by itself does not introduce new features, the fact that it is based on a new protocol like QUIC allowed to rethink how a transport layer protocol should work from the ground up. QUIC was published as a Proposed Standard in May 2021 with RFC 9000, with HTTP/3 following in June 2022 as RFC 9114, after a few years of work.\cite{http3}
+To overcome the limitations of TCP-based approaches, the newest version of HTTP, \textbf{HTTP/3}, is based on a new transport protocol called QUIC, which is built on top of the lightweight UDP. While HTTP/3 by itself does not introduce new features, the fact that it is based on a new protocol like QUIC allows to rethink how a transport layer protocol should work from the ground up. QUIC was published as a Proposed Standard in May 2021 with RFC 9000, with HTTP/3 following in June 2022 as RFC 9114, after a few years of work.\cite{http3}
 
 More in depth, the following are some main conceptual differences between HTTP/2 and HTTP/3:
 
 \begin{itemize}
-    \item Since QUIC is based on UDP, TCP features such as connection establishment, flow control, congestion control, and retransmissions are now implemented by QUIC.
+    \item Since QUIC is based on UDP, TCP features such as connection establishment, flow control, congestion control and retransmissions are now implemented by QUIC.
     \item \textbf{TLS v1.3} is tightly integrated with QUIC, making security features such as encrypted communication mandatory. At the same time, this approach allows innovative features such as 1-RTT handshakes or 0-RTT session resumption to be seamlessly implemented, providing further performance improvements.
-    \item Unlike TCP, QUIC provides a seamless \textbf{connection migration} feature that allows reuse of connections when the network connection changes.
+    \item Unlike TCP, QUIC provides a seamless \textbf{connection migration} feature that allows the reuse of connections when there are changes in network connectivity.
     \item \textbf{Stream multiplexing} is moved "down" from the application layer to QUIC. HTTP/3 takes advantage of QUIC streams to provide request multiplexing. HTTP/3 clients or servers can cancel HTTP requests by \textbf{resetting} the underlying QUIC stream.
-    \item HTTP/2 \textbf{stream prioritization} is replaced by a simpler priority mechanism, implemented at the HTTP/3 level. QUIC does not have stream prioritization.
+    \item HTTP/2 \textbf{stream prioritization} is replaced by a simpler priority mechanism, implemented at the HTTP/3 level. QUIC does not support stream prioritization.
 \end{itemize}
 
 \begin{figure}
@@ -548,7 +546,7 @@ More in depth, the following are some main conceptual differences between HTTP/2
 
 The \textbf{head-of-line blocking} issue caused by TCP in HTTP/2 is not present in HTTP/3, since streams are now a concept of the transport layer. Unlike TCP, in fact, QUIC does not see a single byte stream but multiple streams that can be treated independently (with respect to retransmissions, for example). However, if the scheduling strategy implemented by the server is sequential, there could still be head-of-line blocking because the slow transmission of a stream would block the other ones. The multiplexing scheduler depends on the server implementation and is often round-robin, according to the experiments run by Marx et al.\cite{quicdiversity}
 
-The prioritization scheme used by HTTP/3 was introduced in RFC 9218, published together with HTTP/3, with the title \textit{Extensible Prioritization Scheme for HTTP}. As the title suggests, the new mechanism is actually not HTTP/3-specific and is defined for both HTTP/2 and HTTP/3. Clients that implement RFC 9218 can communicate their preferences on how the server should prioritize responses in two ways:\cite{rfc9218}
+The prioritization scheme used by HTTP/3 was introduced in RFC 9218 (\textit{Extensible Prioritization Scheme for HTTP}), published together with HTTP/3. As the title suggests, the new mechanism is actually not HTTP/3-specific and is defined for both HTTP/2 and HTTP/3. Clients that implement RFC 9218 can communicate their preferences on how the server should prioritize responses in two ways:\cite{rfc9218}
 
 \begin{itemize}
     \item Through an HTTP header called \texttt{Priority}, in which the priority for the request is specified.
@@ -559,14 +557,14 @@ The HTTP requests priorities defined by RFC 9218 are characterized by two parame
 
 \begin{itemize}
     \item The \textbf{urgency} parameter (\texttt{u}), an integer value ranging from 0 to 7 in descending order of priority, with a default value of 3.
-    \item The \textbf{incremental} parameter (\texttt{i}), indicating whether an HTTP response can be processed incrementally by the client, and therefore if it can benefit from being received concurrently. For example, the download of a standard JPEG image file would not benefit from being transmitted incrementally since the JPEG decoder usually needs the whole image to start decoding the picture. On the other hand, a CSS file could benefit from being delivered even partially if the browser is capable of interpreting the CSS rules before the whole file is downloaded. The default value of the incremental parameter is 0 (\texttt{false}).
+    \item The \textbf{incremental} parameter (\texttt{i}), indicating whether an HTTP response can be processed incrementally by the client, and therefore if it can benefit from being received concurrently. For example, the download of a standard (non-progressive) JPEG image file would not benefit from being transmitted incrementally since the JPEG decoder needs the whole image to start decoding the picture. On the other hand, a progressive JPEG image can be rendered at increasing quality levels progressively while it is being downloaded, and could therefore benefit from being delivered incrementally. The default value of the incremental parameter is 0 (\texttt{false}).
 \end{itemize}
 
 When using the \texttt{Priority} header, the urgency and incremental parameters can be specified as a string in the following format: \texttt{u=3, i=0}.
 
-Since HTTP/3 uses the same transport layer port as previous HTTP versions, namely port 443 for HTTPS, but with a different transport layer protocol (TCP vs UDP/QUIC), a protocol negotiation mechanism is needed. This is currently done through the HTTP \texttt{Alt-Svc} response header, through which servers can specify if and on which port alternative services such as HTTP/3 are available.
+Since HTTP/3 uses the same transport layer port as previous HTTP versions (port 443) but with a different transport layer protocol (TCP vs UDP/QUIC), a \textbf{protocol negotiation} mechanism is needed. This is currently done through the HTTP \texttt{Alt-Svc} response header, through which servers can specify if and on which port alternative services such as HTTP/3 are available.
 
-Browsers usually send the first connection through TCP-based HTTP. If the response contains an \texttt{Alt-Svc} header indicating that HTTP/3 is available, they close the TCP connection and switch to QUIC on subsequent requests. An example of a header advertising HTTP/3 on port 443 is \verb|Alt-Svc: h3=":443"; ma=2592000|, where \texttt{ma} (max-age) corresponds to the number of seconds for which the alternative service configuration should be considered valid (defaults to 24 hours). There is also a proposal to negotiate the HTTP version through DNS records, but it is still a draft.\footnote{\url{https://datatracker.ietf.org/doc/draft-ietf-dnsop-svcb-https/}}
+Browsers usually send the first connection through TCP-based HTTP. If the response contains an \texttt{Alt-Svc} header indicating that HTTP/3 is available, the TCP connection is closed and the browser switches to QUIC on subsequent requests. An example of a header advertising HTTP/3 on port 443 is \verb|Alt-Svc: h3=":443"; ma=2592000|, where \texttt{ma} (max-age) corresponds to the number of seconds for which the alternative service configuration should be considered valid (defaults to 24 hours). There is also a proposal to negotiate the HTTP version through DNS records, but it is still a draft.\footnote{\url{https://datatracker.ietf.org/doc/draft-ietf-dnsop-svcb-https/}}
 
 \subsubsection{Server implementations}
 \label{sec:bg/http3/servers}
@@ -580,18 +578,18 @@ Some lesser known web servers that include HTTP/3 support are Fastly's h2o (base
 \subsubsection{Browser support}
 \label{sec:bg/http3/browsers}
 
-It is estimated that around 75\% of the market share of browsers is capable of browsing with HTTP/3. Google Chrome added support for HTTP/3 in 2020, Mozilla Firefox in 2021, while in Apple Safari support for HTTP/3 is still experimental at the time of writing.\footnote{\url{https://caniuse.com/http3}} According to Cloudflare Radar, HTTP/3 traffic accounts for around 28\% of global web traffic, with HTTP/2 at 65\% and HTTP/1.x at 7\%.\footnote{\url{https://radar.cloudflare.com/}}
+It is estimated that around 75\% of the market share of browsers is capable of browsing with HTTP/3. Google Chrome added support for HTTP/3 in 2020, Mozilla Firefox in 2021, while Apple Safari support for HTTP/3 is still experimental at the time of writing.\footnote{\url{https://caniuse.com/http3}} According to Cloudflare Radar, HTTP/3 traffic accounts for around 28\% of global web traffic, with HTTP/2 at 65\% and HTTP/1.x at 7\%.\footnote{\url{https://radar.cloudflare.com/}}
 
 \subsubsection{Debugging tools}
 \label{sec:bg/http3/tools}
 
-When conducting research or developing applications based on HTTP/3, it is often useful to dig deeper into the raw HTTP/3 or QUIC frames. There are several tools that make this possible.
+When conducting research or developing applications based on HTTP/3, it is often useful to dig deeper into the raw HTTP/3 or QUIC frames. There are several tools that make this possible:
 
 \begin{itemize}
-    \item \textbf{Wireshark}, the popular network protocol analyzer, includes support for QUIC and HTTP/3, although still very basic and missing most features;\footnote{\url{https://gitlab.com/wireshark/wireshark/-/issues/16761}}
-    \item \texttt{qlog}, a project of the IETF QUIC Working Group aimed at introducing a common logging format for QUIC. Both client and server implementations can support \texttt{qlog}, providing a way to capture and export network traces with QUIC-related events in a common format. \texttt{qlog} captures can then be parsed by \texttt{qlog} analyzers;\footnote{\url{https://github.com/quicwg/qlog}}
-    \item Chrome's \textbf{NetLog dump}, which is a detailed capture of network activity from the perspective of the browser. It can be generated by browsing to \texttt{chrome://net-export} and following the instructions. The format of the output dump file is proprietary, but there are visualization tools that support the NetLog dump format;\footnote{\url{https://www.chromium.org/for-testers/providing-network-details/}}
-    \item \texttt{qvis}, developed by the authors of \cite{quicdiversity}, is a suite of tools that analyze \texttt{qlog}, NetLog dumps or Wireshark captures to provide advanced insights into QUIC traces. The suite includes many visualization tools such as sequence diagrams, congestion control plots, multiplexing and packetization visualizations, and other detailed statistics.\footnote{\url{https://qvis.quictools.info/}}
+    \item \textbf{Wireshark}, the popular network protocol analyzer, includes support for QUIC and HTTP/3, although still very basic and missing most features.\footnote{\url{https://gitlab.com/wireshark/wireshark/-/issues/16761}}
+    \item \texttt{qlog}, a project of the IETF QUIC Working Group with the objective of introducing a common logging format for QUIC. Both client and server implementations can support \texttt{qlog}, providing a way to capture and export network traces with QUIC-related events in a common format. \texttt{qlog} captures can then be parsed by \texttt{qlog} analyzers.\footnote{\url{https://github.com/quicwg/qlog}}
+    \item Chrome's \textbf{NetLog dump}, which is a detailed capture of network activity from the perspective of the browser. It can be generated by browsing to \texttt{chrome://net-export} and following the instructions. The format of the output dump file is proprietary, but there are visualization tools that support the NetLog dump format.\footnote{\url{https://www.chromium.org/for-testers/providing-network-details/}}
+    \item \texttt{qvis}, developed by the authors of \cite{quicdiversity}, is a suite of tools to analyze \texttt{qlog}, NetLog dumps or Wireshark captures and extract advanced insights from QUIC traces. The suite includes many visualization tools such as sequence diagrams, congestion control plots, multiplexing and packetization visualizations, and other detailed statistics.\footnote{\url{https://qvis.quictools.info/}}
 \end{itemize}
 
 \section{Network emulation}
@@ -663,7 +661,7 @@ mininet> iperf
 
 \textbf{ComNetsEmu} is an extension to Mininet that aims at complete host isolation thanks to \textbf{Docker containers}. Since ComNetsEmu enforces stricter node isolation, it is heavier than Mininet.
 
-Similarly to Mininet, ComNetsEmu can be programmed through a Python API. In ComNetsEmu, both hosts and applications deployed on hosts are represented by Docker containers. The application containers are deployed as siblings containers to emulate a "Docker-in-Docker" architecture.
+Similarly to Mininet, ComNetsEmu can be programmed through Python. In ComNetsEmu, both hosts and applications deployed on hosts are represented by Docker containers. The application containers are deployed as "siblings" containers to emulate a "Docker-in-Docker" architecture.
 
 The recommended way to run ComNetsEmu is to use a Vagrant virtual machine, which takes care of setting up the software and all the required dependencies.\cite{comnetsemu}
 
