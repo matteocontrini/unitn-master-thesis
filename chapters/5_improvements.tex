@@ -559,11 +559,11 @@ Figure \ref{fig:filler1} shows the buffer health plot for an experiment run with
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\textwidth]{res/impr_hls_filler.png}
-    \caption{Buffer health plot for an experiment using the modified \hlsjs{} library. The protocol is HTTP/3 and priority is given to audio. The network pattern is \texttt{spike}. Outdated segments are dropped and replaced by the filler segment.}
+    \caption{Buffer health plot for an experiment using the modified \hlsjs{} library. The protocol is HTTP/3 and priority is given to audio. The network pattern is \texttt{spike}. Outdated segments are dropped and replaced by the filler segment (dark areas).}
     \label{fig:filler1}
 \end{figure}
 
-As we can see, \textbf{the playback stalls have been completely removed}. Playback is not interrupted because there is always some audio in the buffer to play. The black areas (TODO) refer to the segments that have been dropped and replaced with a filler segment.
+As we can see, \textbf{the playback stalls have been completely removed}. Playback is not interrupted because there is always some audio in the buffer to play. The dark areas refer to the segments that have been dropped and replaced with a filler segment.
 
 In Figure \ref{fig:filler2} we can also see the live latency and the waterfall. It is clear that with this solution the live latency stays stable even during the congestion periods. In the waterfall diagram, we can see which segments are discarded, represented in black.
 
@@ -573,7 +573,7 @@ In Figure \ref{fig:filler2} we can also see the live latency and the waterfall. 
 	\begin{subfigure}[t]{0.45\textwidth}
 		\centering
 		\includegraphics[width=\textwidth]{res/impr_hls_filler_latency.png}
-		\caption{Live latency plot. TODO: remove the spike}
+		\caption{Live latency plot.}
 		\label{fig:filler2_latency}
 	\end{subfigure}%
 	~ 
