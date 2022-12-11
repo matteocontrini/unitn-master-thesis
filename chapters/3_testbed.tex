@@ -333,7 +333,7 @@ The patterns inspired by the \textbf{Twitch's Grand Challenge} are particularly 
 
 On the "client" side of the network link there is host H1, which hosts the application that is responsible for launching the browser instance and playing the video stream in a web page. It also collects and records some metrics and events that will be later used for analysis.
 
-For the browser, we chose to use the \textbf{Chromium} web browser, on which Google Chrome is based. We made this choice for multiple reasons, one of them being the fact that we can use a library developed by Google to control the browser by code, as we will see shortly. Other reasons are the way HTTP/3 priorities are handled (Section \ref{sec:eval/browsers}), the video playback behavior in case of buffer underruns\footnote{A buffer underrun (or underflow) happens when the buffer is not filled fast enough and thus becomes empty.} (Section \ref{sec:eval/abr/hls}), and the support for the WebCodecs API (Section \ref{sec:improvements/webcodecs}).
+For the browser, we chose to use the \textbf{Chromium} web browser, on which Google Chrome is based. We made this choice for multiple reasons, one of them being the fact that we can use a library developed by Google to control the browser by code, as we will see shortly. Other reasons are the way HTTP/3 priorities are handled (Section \ref{sec:eval/browsers}), the video playback behavior in case of buffer underruns\footnote{A buffer underrun (or underflow) happens when the buffer is not filled fast enough and thus becomes empty.} (Section \ref{sec:eval/abr/hls}), and the support for the WebCodecs API (Section \ref{sec:improvements/impl/webcodecs}).
 
 Chromium is installed when building the Docker image through the default Debian 11 (bullseye) repository, which includes an ARM64 build of Chromium. However, by default Chromium only ships with non-proprietary codecs such as VP9 and AV1, and not H.264.\footnote{\url{https://www.chromium.org/audio-video/}} To be able to play H.264 video files, an additional package must be installed. This package (\texttt{chromium-codecs-ffmpeg-extra}) is not provided by Debian repositories, so the (equivalent) Ubuntu version is used.
 
@@ -442,7 +442,7 @@ Several other events are recorded. In particular:
             \item the \textbf{start timestamp} of the segment within the video/audio;
             \item the \textbf{duration} of the segment;
             \item the \textbf{clock timestamp} of when the loading started and ended;
-            \item whether the segment is a \textbf{filler segment}, as we will see in Section \ref{sec:improvements/filler}.
+            \item whether the segment is a \textbf{filler segment}, as we will see in Section \ref{sec:improvements/impl/filler}.
         \end{itemize}
     \item \texttt{REPRESENTATION\_SWITCH}, signaling that a switch to a different rendition occurred. The metadata of this event are the video and audio bitrates of the new rendition.
 \end{itemize}
