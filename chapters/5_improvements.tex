@@ -148,9 +148,11 @@ The easiest way to manipulate how \hlsjs{} sends HTTP requests is to use the \te
 
 The \texttt{xhrSetup} option takes a function that is called just before sending the HTTP request. In practice, it allows to override how the request is created. In our case, to set the HTTP/3 priority we need to set either the \texttt{Priority} header or the \texttt{priority} query string parameter. In fact, in Section \ref{sec:eval/browsers/priorities} we introduced a patch to the \texttt{h2o} web server that lets us set the priority with the query string parameter.
 
-Since we are interested in \textbf{giving priority only to the audio segments requests}, we need to distinguish which requests correspond to those segments. Doing so in the \texttt{xhrSetup} function does not give a proper way to distinguish the type of request so we must resort to looking at the format of the URL. Since the chunk files contain the ID of the stream (i.e. audio or video), we can implement priority for audio segment as follows.
+Since we are interested in \textbf{giving priority only to the audio segments requests}, we need to distinguish which requests correspond to those segments. Doing so in the \texttt{xhrSetup} function does not give a proper way to distinguish the type of request so we must resort to looking at the format of the URL. Since the chunk files contain the ID of the stream (i.e. audio or video), we can implement priority for audio segment as shown in Figure \ref{fig:hlsjs_xhrsetup}.
 
-\begin{minted}[frame=single]{ts}
+\begin{figure}[h]
+    \centering
+    \begin{minted}[frame=single]{ts}
 const hls = new Hls({
     xhrSetup: (xhr, url) => {
         if (url.includes('chunk-stream-0')) {
@@ -161,13 +163,16 @@ const hls = new Hls({
         xhr.open('GET', url, true);
     }
 });
-\end{minted}
+    \end{minted}
+    \caption{TypeScript code showing how to configure the XHR request and specify the priority for audio requests. In this case, we are giving the chunks for stream \texttt{1} an HTTP/3 priority of \texttt{1}, while all the other files have priority \texttt{2} (still higher than the default of \texttt{3}).}
+    \label{fig:hlsjs_xhrsetup}
+\end{figure}
 
-In this case, we are giving the chunks for stream \texttt{1} an HTTP/3 priority of \texttt{1}, while all the other files have priority \texttt{2} (still higher than the default of \texttt{3}).
+A better way would be to override the \texttt{Hls} loader to override the URL of the segment based on its type, as shown in Figure \ref{fig:hlsjs_custom_loader}. This is slightly more complex to implement, but we can still avoid to reimplement the whole loader implementation, taking advantage of inheritance.
 
-A better way would be to override the \texttt{Hls} loader to override the URL of the segment based on its type. This is slightly more complex to implement, but we can still avoid to reimplement the whole loader implementation, taking advantage of inheritance.
-
-\begin{minted}[frame=single,breaklines,highlightlines=6]{js}
+\begin{figure}
+    \centering
+    \begin{minted}[frame=single,breaklines,highlightlines=6]{js}
 class CustomLoader extends Hls.DefaultConfig.loader {
     constructor(config: HlsConfig) {
         super(config);
@@ -183,8 +188,11 @@ class CustomLoader extends Hls.DefaultConfig.loader {
     }
 }
 \end{minted}
+    \caption{TypeScript code showing how a custom fragment loader for \hlsjs{} can be implemented to override the priority for specific HTTP requests.}
+    \label{fig:hlsjs_custom_loader}
+\end{figure}
 
-The custom fragment loader (\texttt{fLoader}) can then be passed as an option when creating the \texttt{Hls} instance:
+An instance of the custom fragment loader can then be passed as an option when creating the \texttt{Hls} instance:
 
 \begin{minted}[frame=single]{ts}
 const hls = new Hls({

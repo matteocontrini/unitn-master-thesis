@@ -526,9 +526,11 @@ async tick() {
 
 For HLS playback, we used the \hlsjs{} library (v1.2.3). It is written in TypeScript and transpiled to JavaScript (ECMAScript5).
 
-The most basic code snippet to initialize \hlsjs{} and start the playback of an HLS stream looks like the following. After creating the \texttt{Hls} instance, the source is loaded and attached to the HTML5 media element. To start the playback automatically, we must listen to the \texttt{MANIFEST\_PARSED} event and then call the play method on the HTML5 element, which is in practice our video player.
+The most basic code snippet to initialize \hlsjs{} and start the playback of an HLS stream looks like the one shown in Figure \ref{fig:hlsjs_init}. After creating the \texttt{Hls} instance, the source is loaded and attached to the HTML5 media element. To start the playback automatically, we must listen to the \texttt{MANIFEST\_PARSED} event and then call the play method on the HTML5 element, which is in practice our video player.
 
-\begin{minted}[frame=single]{js}
+\begin{figure}[h]
+    \centering
+    \begin{minted}[frame=single]{js}
 hls = new Hls();
 hls.loadSource(url);
 hls.on(Hls.Events.MANIFEST_PARSED, async () => {
@@ -536,7 +538,10 @@ hls.on(Hls.Events.MANIFEST_PARSED, async () => {
     await element.play();
 });
 hls.attachMedia(element);
-\end{minted}
+    \end{minted}
+    \caption{TypeScript code snippet showing how \hlsjs{} can be initialized and attached to a media element.}
+    \label{fig:hlsjs_init}
+\end{figure}
 
 To customize the settings, an object literal can be passed to the \texttt{Hls} constructor. The code block in Figure \ref{fig:hlsjs_settings} shows how to set the following options:
 
@@ -561,15 +566,20 @@ hls = new Hls({
 
 Collecting events and metrics with \hlsjs{} is slightly more complex than with \dashjs{}, because most events that we need are not directly exposed by the \texttt{Hls} event emitter. In practice, the only events that can be directly mapped are \texttt{FRAGMENT\_LOADED} and \texttt{REPRESENTATION\_SWITCH}, which respectively correspond to the events \texttt{FRAG\_LOADED} and \texttt{LEVEL\_SWITCHING} in \hlsjs{}.
 
-For the \texttt{STATUS} event, every 250 milliseconds a tick function is called. While the latency and playback rate are exposed as properties of the \texttt{Hls} instance, the video and audio buffer lengths must be calculated based on the current player state. To do this, we use an internal \hlsjs{} function from the \texttt{BufferHelper} class, which calculates the range of the buffered media based on the MSE \texttt{SourceBuffer} (Section \ref{sec:bg/technologies/mse}), the current time and a tolerance value (that allows to skip "holes" in the buffer that are very small). For example, the following code block shows how we can calculate the forward buffer length for the video track.
+For the \texttt{STATUS} event, every 250 milliseconds a tick function is called. While the latency and playback rate are exposed as properties of the \texttt{Hls} instance, the video and audio buffer lengths must be calculated based on the current player state. To do this, we use an internal \hlsjs{} function from the \texttt{BufferHelper} class, which calculates the range of the buffered media based on the MSE \texttt{SourceBuffer} (Section \ref{sec:bg/technologies/mse}), the current time and a tolerance value (that lets us skip "holes" in the buffer that are very small). For example, the code block in Figure \ref{fig:hls_bufferinfo} shows how we can calculate the forward buffer length for the video track.
 
-\begin{minted}[frame=single]{js}
+\begin{figure}[h]
+    \centering
+    \begin{minted}[frame=single]{js}
 const {len} = BufferHelper.bufferInfo(
     this.bufferController.tracks.video.buffer, // the source buffer
     this.element.currentTime,
     0.25 // the maximum hole duration
 );
-\end{minted}
+    \end{minted}
+    \caption{Code snippet showing how we can obtain the length of the forward buffer from \hlsjs{}.}
+    \label{fig:hls_bufferinfo}
+\end{figure}
 
 Since \hlsjs{} does not directly expose the other events that we need, we must manually implement the code that infers them by observing the state of the player. For instance, to understand whether the video buffer is empty we look at the value calculated above and decide that the buffer is empty when the length goes below the threshold of 300 milliseconds (which is more or less the same that is used by \dashjs{} internally). We then send the \texttt{BUFFER\_EMPTY} event to the backend. Similarly, this can be done for the \texttt{BUFFER\_LOADED} event, for both audio and video.
 
