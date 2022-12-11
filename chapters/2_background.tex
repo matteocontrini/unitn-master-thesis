@@ -220,7 +220,7 @@ An H.264 bitstream muxed in an MP4 container does not need start codes and there
 
 A typical structure of an MP4 file consists of a \texttt{ftyp} box followed by a \texttt{moov} box (containing the tracks metadata), and finally the actual data stored in a \texttt{mdat} box. The \texttt{moov} box is sometimes placed at the end of the file, since the information required to create the box is typically available only at the end of the encoding process.
 
-For some use cases, such as adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \textbf{fMP4}. In this format, the sequence is divided into fragments that can be transmitted and played independently. The structure of an fMP4 file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, such as the fragment index and the timestamp, and the \texttt{mdat} contains the video or audio samples for a single fragment (typically a few seconds of content).
+For some use cases, such as adaptive video streaming, a more suitable structure is the one provided by the \textbf{fragmented MP4} format, or \texttt{fMP4}. In this format, the sequence is divided into fragments that can be transmitted and played independently. The structure of an \texttt{fMP4} file still has \texttt{ftyp} and \texttt{moov} boxes at the beginning, shared among all fragments, while the rest of the file consists of a sequence of \texttt{moof} and \texttt{mdat} boxes, where the \texttt{moof} box contains metadata about the fragment, such as the fragment index and the timestamp, and the \texttt{mdat} contains the video or audio samples for a single fragment (typically a few seconds of content).
 
 \begin{figure}
 	\centering
@@ -268,11 +268,11 @@ For some use cases, such as adaptive video streaming, a more suitable structure 
 [mdat] size=8+198008
   ...
 		\end{minted}
-		\caption{Fragmented MP4 (fMP4) file structure.}
+		\caption{Fragmented MP4 (\texttt{fMP4}) file structure.}
 		\label{fig:mp4dump_fragmented}
 	\end{subfigure}
 	
-	\caption{Comparison between MP4 and fMP4 file structures. Extracted with the \texttt{mp4dump} tool (Bento4).}
+	\caption{Comparison between MP4 and \texttt{fMP4} file structures. Extracted with the \texttt{mp4dump} tool (Bento4).}
 	\label{fig:mp4dump}
 \end{figure}
 
@@ -340,7 +340,7 @@ segment-3.ts
 	\label{fig:hls_media}
 \end{figure}
 
-The HLS media segments can be muxed into the MPEG-2 TS format (\texttt{.ts} files) or in the fragmented MP4 format (\texttt{.mp4} or \texttt{.m4s} files). The supported video codecs are H.264 and H.265. When using fMP4 as the container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes with the \texttt{\#EXT-X-MAP} tag.
+The HLS media segments can be muxed into the MPEG-2 TS format (\texttt{.ts} files) or in the fragmented MP4 format (\texttt{.mp4} or \texttt{.m4s} files). The supported video codecs are H.264 and H.265. When using \texttt{fMP4} as the container format, media playlists must specify an \textbf{initialization segment} containing the \texttt{ftyp} and \texttt{moov} boxes with the \texttt{\#EXT-X-MAP} tag.
 
 In addition to the RFC, Apple maintains an \textit{Authoring Specification for Apple Devices} defining additional rules for HLS streams, which are often taken as "safe" practices in the industry when producing content for adaptive bitrate streaming.\cite{hlsauthoring}
 
@@ -365,7 +365,7 @@ DASH is a very complex standard, so we will just give a general overview of how 
 
 \begin{itemize}
     \item Unlike HLS, DASH is codec-agnostic, therefore it can be used with any codec without waiting for the standard to be updated.
-    \item It uses the fMP4 container format by default, thus reducing the overhead introduced by MPEG-2 TS.
+    \item It uses the \texttt{fMP4} container format by default, thus reducing the overhead introduced by MPEG-2 TS.
     \item DASH does not use M3U playlists: there is a single manifest file (\texttt{.mpd} extension) in XML format.
 \end{itemize}
 
@@ -424,7 +424,7 @@ The MPEG-DASH standard also has an extension for low-latency streaming, known as
 \subsection{Common Media Application Format (CMAF)}
 \label{sec:bg/technologies/cmaf}
 
-Before Apple introduced support for fMP4 segments in 2016, a common issue for video platforms was that supporting both HLS and DASH required two copies of the same content, one in MPEG-2 TS format and the other in fMP4. This was needed because not all platforms support HLS and vice versa.
+Before Apple introduced support for \texttt{fMP4} segments in 2016, a common issue for video platforms was that supporting both HLS and DASH required two copies of the same content, one in MPEG-2 TS format and the other in \texttt{fMP4}. This was needed because not all platforms support HLS and vice versa.
 
 This problem led to the proposal and standardization of \textbf{Common Media Application Format} (CMAF), a common specification that defines how media should be packaged and segmented for delivery. Fragmented MP4 is a CMAF-compatible format and, since it is supported by both HLS and DASH, it can lead to significant savings. Video platforms can, in fact, produce and store a single set of video segment files and deliver them to all devices.\cite{cmaf}
 
@@ -437,7 +437,7 @@ MSE is a set of APIs that abstract the implementation of media playback in the b
 
 More in detail, MSE defines the \texttt{MediaSource} type as a source of media data for the \texttt{<video>} or \texttt{<audio>} HTML5 media elements, to which a \texttt{MediaSource} is attached. The client code interacts with the \texttt{MediaSource} to push new data, while the media elements fetch the data from the \texttt{MediaSource}.
 
-\texttt{MediaSource} instances expose methods for attaching a set of \texttt{SourceBuffer} objects, which represent individual media tracks such as video or audio streams. When new media data is available, such as a new video segment, the client calls the \texttt{appendBuffer()} method on the corresponding \texttt{SourceBuffer}, providing the new data for the track to the browser. The bytes of data must of course conform to the format set when creating the \texttt{SourceBuffer}, which must be supported by the browser. Most of the time this means the ISOBMFF (fMP4) or WebM container formats. Codec support instead often depends on the browser build/configuration and platform.
+\texttt{MediaSource} instances expose methods for attaching a set of \texttt{SourceBuffer} objects, which represent individual media tracks such as video or audio streams. When new media data is available, such as a new video segment, the client calls the \texttt{appendBuffer()} method on the corresponding \texttt{SourceBuffer}, providing the new data for the track to the browser. The bytes of data must of course conform to the format set when creating the \texttt{SourceBuffer}, which must be supported by the browser. Most of the time this means the ISOBMFF (\texttt{fMP4}) or WebM container formats. Codec support instead often depends on the browser build/configuration and platform.
 
 The libraries that implement HLS or DASH must take care of parsing the manifest files, downloading the segments, implementing rate adaptation algorithms, possibly transmuxing from MPEG-2 TS to fragmented MP4, appending the media data to the source buffers while leaving the MP4 demuxing and stream decoding tasks to the browser.
 

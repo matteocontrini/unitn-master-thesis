@@ -306,20 +306,20 @@ As a first implementation to confirm the feasibility of the solution, we impleme
 
 However, having the H.264 bitstream is not enough to play the segment. In fact, the Media Source Extensions API expects muxed data in the fragmented MP4 format, therefore the H.264 data must be correctly inserted in the MP4 container with the correct timing information.
 
-Moreover, since the filler segment is generated with different encoding parameters than the main stream, there is a discontinuity that the video decoder must be aware of. In fMP4, this signaling of the new parameters is done through initialization segments, that is, segments that contain at least the \texttt{ftyp} and \texttt{moov} boxes. This information is shared by all the segments following the init segment, until a new one is found.
+Moreover, since the filler segment is generated with different encoding parameters than the main stream, there is a discontinuity that the video decoder must be aware of. In \texttt{fMP4}, this signaling of the new parameters is done through initialization segments, that is, segments that contain at least the \texttt{ftyp} and \texttt{moov} boxes. This information is shared by all the segments following the init segment, until a new one is found.
 
 Once both the init segment and the segment data are available, they are appended to the underlying \texttt{SourceBuffer} so that the video segment can be played.
 
 \section{Muxing in the browser}
 \label{sec:improvements/muxing}
 
-As mentioned above, once we have the H.264 bitstream of the video frame we have to \textbf{mux it into the fMP4 container} to produce the segment. The segment does not need to contain 25 frames per second, but it can actually contain only one video frame with a duration of 2 seconds (and the correct start timestamp).
+As mentioned above, once we have the H.264 bitstream of the video frame we have to \textbf{mux it into the \texttt{fMP4} container} to produce the segment. The segment does not need to contain 25 frames per second, but it can actually contain only one video frame with a duration of 2 seconds (and the correct start timestamp).
 
-The browser APIs do not provide a way to mux or transmux video data, therefore we had to rely on other libraries. An important fact that affects the implementation is that we are dealing with the fragmented MP4 container format and not just MP4. In fact, not all libraries support the fMP4 format.
+The browser APIs do not provide a way to mux or transmux video data, therefore we had to rely on other libraries. An important fact that affects the implementation is that we are dealing with the fragmented MP4 container format and not just MP4. In fact, not all libraries support the \texttt{fMP4} format.
 
-After investigating many possible options, we came to the conclusion that there was no complete JavaScript library that implements fMP4 muxing in the browser. In fact, fMP4 muxing is usually performed directly by the libraries that use the MSE API, such as \hlsjs{} when transmuxing from MPEG-2 TS to fMP4.
+After investigating many possible options, we came to the conclusion that there was no complete JavaScript library that implements \texttt{fMP4} muxing in the browser. In fact, \texttt{fMP4} muxing is usually performed directly by the libraries that use the MSE API, such as \hlsjs{} when transmuxing from MPEG-2 TS to \texttt{fMP4}.
 
-Instead of delving into a manual JavaScript implementation of fMP4 muxing from the raw H.264 bitstream, we decided to experiment with an approach based on \texttt{WebAssembly}, which turned out to be successful.
+Instead of delving into a manual JavaScript implementation of \texttt{fMP4} muxing from the raw H.264 bitstream, we decided to experiment with an approach based on \texttt{WebAssembly}, which turned out to be successful.
 
 \texttt{WebAssembly} (WASM) is a low-level binary format that can be used as a build target of many programming languages. It is meant to provide an efficient alternative to JavaScript: a WASM binary file can be embedded and executed in a web page, effectively allowing to execute code written in any supported programming language in the browser at close-to-native performance.
 
@@ -362,9 +362,9 @@ func main() {
     \label{fig:wasm_go_main}
 \end{figure}
 
-Both functions take the H.264 coded data as input, which is then muxed into an fMP4 container. To perform the muxing, we use \texttt{mp4ff}, a library to parse and write MP4 files.\footnote{\url{https://github.com/edgeware/mp4ff}} The input H.264 data must be in the Annex B format with start codes (see Section \ref{sec:bg/compression/codecs/h264}).
+Both functions take the H.264 coded data as input, which is then muxed into an \texttt{fMP4} container. To perform the muxing, we use \texttt{mp4ff}, a library to parse and write MP4 files.\footnote{\url{https://github.com/edgeware/mp4ff}} The input H.264 data must be in the Annex B format with start codes (see Section \ref{sec:bg/compression/codecs/h264}).
 
-For the initialization segment, we must create an fMP4 file containing a \texttt{moov} atom that defines some characteristics of the video tracks. In this case, we only have one video track in the H.264 format, whose decoding information is written in a box in the \texttt{avcC} format (see Section \ref{sec:bg/containers/mp4}).
+For the initialization segment, we must create an \texttt{fMP4} file containing a \texttt{moov} atom that defines some characteristics of the video tracks. In this case, we only have one video track in the H.264 format, whose decoding information is written in a box in the \texttt{avcC} format (see Section \ref{sec:bg/containers/mp4}).
 
 To build the H.264 descriptor, we must first extract two NAL units from the H.264 bitstream, specifically the \textbf{Sequence Parameter Set} (SPS) and the \textbf{Picture Parameter Set} (PPS). These units contain information such as the width and height of the frame and other encoding parameters. Extracting them means parsing the NAL units from the H.264 bitstream and identifying which are the SPS and PPS units, as shown in Figure \ref{fig:wasm_go_sps}.
 
@@ -392,7 +392,7 @@ func ExtractSpsPps(bitstream []byte) ([]byte, []byte) {
 
 The init segment can then be built by adding the \texttt{moov} boxes, which contains a single \texttt{trak} with the \texttt{avcC} information. In this step, we also need to assign a time scale to the video track. The time scale represents the number of time units per second, and is then used as a basis for assigning a timestamp to the specific video frame. For example, if we set the time scale to 12800, a typical value, it means that in a 25 fps video file each frame will have a timestamp that is a multiple of 512.
 
-The WASM \texttt{createFragment} function is instead used to create the actual media segment, or fMP4 fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both expressed in seconds.
+The WASM \texttt{createFragment} function is instead used to create the actual media segment, or \texttt{fMP4} fragment. The inputs of this function are not only the H.264 bitstream as for the \texttt{initSegment} function, but also the start timestamp of the segment and its duration, both expressed in seconds.
 
 In the actual implementation, we must create another fragmented MP4 file instance and only add one fragment to it. Since the Annex B packetization format is incompatible with MP4, we must first convert the byte stream to packets. The library \texttt{mp4ff} provides us with an helper function to do this.
 
@@ -416,7 +416,7 @@ sample := mp4.FullSample{
 
 frag.AddFullSample(sample)
     \end{minted}
-    \caption{Snippet from the Go WASM application showing how to create an fMP4 sample from the input H.264 bitstream.}
+    \caption{Snippet from the Go WASM application showing how to create an \texttt{fMP4} sample from the input H.264 bitstream.}
     \label{fig:wasm_go_fragment}
 \end{figure}
 
@@ -427,7 +427,7 @@ As we have seen before, when the modified \texttt{AbrController} in \hlsjs{} dec
 
 This callback is handled in the \texttt{FragmentLoader} class of \hlsjs{}, which is an abstraction that coordinates the lifecycle of the actual loaders, which are created whenever the \texttt{StreamController} decides that a new segment must be loaded. The \texttt{FragmentLoader} is therefore the place where the WASM functions \texttt{createInit} and \texttt{createFragment} are called to produce the new fragment.
 
-Once the generated fragment data is ready, the \texttt{FragmentLoader} will signal to the \texttt{StreamController} that the segment loading has been completed. The data will then be passed to the \textbf{transmuxer}, which is again an abstraction that coordinates the demuxer and remuxer implementations. In this case, the data is already in the fMP4 format so the transmuxer is a passthrough remuxer.
+Once the generated fragment data is ready, the \texttt{FragmentLoader} will signal to the \texttt{StreamController} that the segment loading has been completed. The data will then be passed to the \textbf{transmuxer}, which is again an abstraction that coordinates the demuxer and remuxer implementations. In this case, the data is already in the \texttt{fMP4} format so the transmuxer is a passthrough remuxer.
 
 One important detail that is crucial for the solution to work is making sure that the remuxer knows that there was a discontinuity, and therefore emit the new initialization segment. The transmuxer bases this decision on the following logic, which is a snippet from the \texttt{TransmuxerInterface} class:
 
