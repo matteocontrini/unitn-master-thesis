@@ -488,7 +488,7 @@ The code example in Figure \ref{fig:webcodecs_videoencoder} shows how a \texttt{
 \begin{itemize}
     \item \textbf{Codec}: a string that defines which codec should be used for encoding.
     \begin{itemize}
-        \item The characters before the dot define the name of the codec, as specified by the WebCodecs Codec Registry. For example, in \texttt{avc1.64001f} the string \texttt{avc1} refers to AVC/H.264.\cite{webcodecs_registry}
+        \item The characters before the dot define the name of the codec, as specified by the WebCodecs Codec Registry. For example, in \texttt{avc1.64001f} the string \texttt{avc1} refers to AVC/H.264.\footnote{\url{https://www.w3.org/TR/2022/DRY-webcodecs-codec-registry-20221013/}}
         \item The suffix of the string is specific to the coding format and contains information such as the profile, level, bit depth, etc., that are needed by the decoder. In the case of H.264, the six characters are in hexadecimal format: the first two characters refer to the profile (in the example, \texttt{64} corresponds to \texttt{High}), while the last two declare the level (in the example, \texttt{1f} corresponds to Level 3.1).
     \end{itemize}
     \item \textbf{Width and height}: the resolution of the output video.

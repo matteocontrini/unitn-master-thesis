@@ -29,6 +29,9 @@
 \usepackage{caption}
 \usepackage{subcaption}
 
+% Blank pages
+\usepackage{afterpage}
+
 % Fix quotes. Should be kept last or it complains
 \usepackage [english]{babel}
 \usepackage [autostyle, english = american]{csquotes}
@@ -46,12 +49,8 @@
   \includepdf[pages=-]{parts/front.pdf}
 
   \clearpage
-
-  \input{parts/acknowledgements}
-  \clearpage
   \pagestyle{plain} % no heading, footer with centered page number
 
-  
   % page number with Arabic format
   \mainmatter
 
@@ -73,30 +72,34 @@
       
       % summary / abstract
       \input{chapters/0_abstract}
+      
+      \
+      \newpage
 
       % chapters
       \input{chapters/1_introduction}
+      \newpage
+      \
       \input{chapters/2_background}
       \input{chapters/3_testbed}
       \input{chapters/4_evaluation}
       \input{chapters/5_improvements}
+      \clearpage
+      \newpage
+      \
       \input{chapters/6_conclusions}
 
     \endgroup
 
-
     % bibliography - bibtex format
     % add chapter to index
     \addcontentsline{toc}{chapter}{Bibliography}
-    
+
     % alphabetical order of authors
     \bibliographystyle{plain}
     \bibliography{parts/biblio}
-
-    \titleformat{\chapter}
-        {\normalfont\Huge\bfseries}{Appendix \thechapter}{1em}{}
-    % Appendix / attachment section - optional
-    \appendix
-    \input{parts/attachments}
+    
+    \clearpage
+    \input{parts/acknowledgements}
 
 \end{document}
