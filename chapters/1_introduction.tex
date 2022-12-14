@@ -23,7 +23,7 @@ Video streaming over the public Internet faces the problem of \textbf{slow or co
 
 Although modern compression standards achieve significant compression ratios, leading to bitrates usually below 10 Mbps even for high-resolution content at good quality, not all networks are always able to provide such bitrates reliably.
 
-In fact, while modern access networks such as fiber optics and 4G/5G can be quite reliable and provide a high throughput, Internet connectivity is still far from being perfect. As an example, very high capacity networks are still not dominant in most countries. Mobile networks coverage can be problematic too, and Wi-Fi connectivity can be unstable due to interferences and limitations of the wireless protocol.
+In fact, while modern access networks such as fiber optics and 4G/5G can be quite reliable and provide a high throughput, Internet connectivity is still far from being perfect. As an example, very high capacity networks are still not dominant in most countries. Mobile networks coverage can be problematic too, and Wi-Fi connectivity can be unstable due to interferences and limitations of the wireless protocols.
 
 An additional source of issues that is often overlooked is the Internet Service Provider network, whose backhauling infrastructure needs to be sized properly to avoid congestion. Interconnections with CDNs and other providers are also very important, as they can become congested during peak hours if capacity upgrades are not properly planned in advance.
 
@@ -50,7 +50,7 @@ Delivering live streams introduces a new category of challenges for video player
 \section{A different live user experience}
 \label{sec:intro/experience}
 
-When a live video streaming setup struggles to adapt to network conditions, the most noticeable effect is \textbf{rebuffering}. The playback gets stuck while the player tries to complete the download of the next video segment, and the \textbf{latency tends to grow}. As a consequence, playback will lag behind the live event and users will perceive the action late, possibly by even tens of seconds.
+When a live video streaming setup struggles to adapt to network conditions, the most noticeable effect is \textbf{rebuffering}. The playback gets stuck while the player tries to complete the download of the next video segment, and the \textbf{latency tends to grow}. As a consequence, playback will lag behind the live event and users will receive the action late, possibly by even tens of seconds.
 
 This kind of experience is \textbf{different from other broadcasting mechanisms}. For example, digital terrestrial and satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
 
@@ -72,5 +72,5 @@ The experimental results show that this solution almost eliminates video playbac
 \section{Thesis structure}
 \label{sec:intro/structure}
 
-The remainder of the thesis is organized as follows. In \textbf{Chapter \ref{cha:bg}}, we introduce the main concepts and technologies surrounding video compression and streaming over HTTP. In \textbf{Chapter \ref{cha:testbed}}, we introduce the testbed setup that we developed to evaluate the performance of streaming protocols. In \textbf{Chapter \ref{cha:eval}}, we show the results of the analysis of some experiment runs that show suboptimal behavior. In \textbf{Chapter \ref{cha:improvements}}, we propose some improvements to the live streaming user experience and show the results of the implementation of a modified version of HLS. Finally, in \textbf{Chapter \ref{cha:conclusions}} we acknowledge some limitations of our work and mention a few ideas that are left for future work.
+This thesis is organized as follows. In \textbf{Chapter \ref{cha:bg}}, we introduce the main concepts and technologies surrounding video compression and streaming over HTTP. In \textbf{Chapter \ref{cha:testbed}}, we introduce the testbed setup that we developed to evaluate the performance of streaming protocols. In \textbf{Chapter \ref{cha:eval}}, we show the results of the analysis of some experiment runs that show suboptimal behavior. In \textbf{Chapter \ref{cha:improvements}}, we propose some improvements to the live streaming user experience and show the results of the implementation of a modified version of HLS. Finally, in \textbf{Chapter \ref{cha:conclusions}} we acknowledge some limitations of our work and mention a few ideas that are left for future work.
 

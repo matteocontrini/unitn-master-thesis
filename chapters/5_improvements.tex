@@ -16,7 +16,7 @@ In Section \ref{sec:eval/abr/dashjs} we have shown how in some cases the default
 
 The decision on which bitrate should be requested next is the task of the \textbf{rate adaptation algorithm}, which every library typically implements differently. There are in fact many approaches to solving the problem and there is no clear consensus on which is the best.
 
-The core idea of adaptation algorithms is to choose the best quality level so that the bitrate is lower than the available network bandwidth. There are two main approaches to making this decision:
+The core idea of adaptation algorithms is to choose the best quality level so that the bitrate is lower than the available network bandwidth. There are two main approaches to make this decision:
 
 \begin{itemize}
     \item \textbf{Throughput-based}: the most intuitive approach, consisting of continuously calculating an estimate of the network bandwidth and then selecting the highest bitrate in the ladder which is lower than the bandwidth estimate.
@@ -563,7 +563,7 @@ If audio prioritization is not implemented directly in the modified version of \
 
 In this section, we analyze some results that we obtained with the modified testbed and observe whether the solution indeed produces a better user experience.
 
-Figure \ref{fig:filler1} shows the buffer health plot for an experiment ran with the modified \hlsjs{} library. The protocol is HTTP/3 so that priorities can be used. The network pattern is \texttt{spike}, the one that in previous sections showed unideal performance.
+Figure \ref{fig:filler1} shows the buffer health plot for an experiment ran with the modified \hlsjs{} library. The protocol is HTTP/3 so that priorities can be used. The network pattern is \texttt{spike}, the one that in previous sections showed bad performance.
 
 \begin{figure}[h]
     \centering
