@@ -27,7 +27,7 @@ In fact, while modern access networks such as fiber optics and 4G/5G can be quit
 
 An additional source of issues that is often overlooked is the Internet Service Provider network, whose backhauling infrastructure needs to be sized properly to avoid congestion. Interconnections with CDNs and other providers are also very important, as they can become congested during peak hours if capacity upgrades are not properly planned in advance.
 
-These issues led to the development of a number of video streaming technologies, among which \textbf{Adaptive Bitrate Streaming} protocols based on HTTP, nowadays considered the de facto standard in the industry.\cite{bitmovin}
+These issues led to the development of a number of video streaming technologies, among which \textbf{Adaptive Bitrate Streaming} protocols based on HTTP are nowadays considered the de facto standard in the industry.\cite{bitmovin}
 
 \section{Adaptive bitrate technologies}
 \label{sec:intro/technologies}
@@ -54,7 +54,7 @@ When a live video streaming setup struggles to adapt to network conditions, the 
 
 This kind of experience is \textbf{different from other broadcasting mechanisms}. For example, digital terrestrial and satellite do not have the concept of buffering: if the video signal is not good enough, video and/or audio are temporarily unavailable while the signal recovers, but no latency is introduced, i.e. viewers always see the live action with a fixed delay independently from the signal quality.
 
-Adaptive streaming research has been mostly focused on avoiding empty buffers as much as possible, although in low-latency scenarios, completely avoiding rebuffering is a very hard task. Instead, there are methods that can be integrated in an adaptive streaming setup so that the linear TV experience that viewers are already used to can also be replicated in video streaming. Although subjective, it would likely result in a better Quality of Experience (QoE).
+Adaptive streaming research has been mostly focused on avoiding empty buffers as much as possible, although in low-latency scenarios completely avoiding rebuffering is a very hard task. Instead, there are methods that can be integrated in an adaptive streaming setup so that the linear TV experience that viewers are already used to can also be replicated in video streaming. Although subjective, it would likely result in a better Quality of Experience (QoE).
 
 \section{Contributions and results}
 \label{sec:intro/contributions}

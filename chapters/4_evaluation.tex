@@ -13,9 +13,9 @@ An important thing to keep in mind when evaluating the performance of streaming 
 \subsection{HTTP priorities handling in Chromium and Firefox}
 \label{sec:eval/browsers/priorities}
 
-According to our tests, Chromium (v107) allows to specify the \texttt{Priority} header in requests sent with the \texttt{fetch} API. The header is in fact passed as is to the HTTP server and is correctly interpreted by servers supporting the extensible priorities specification (Section \ref{sec:bg/http3}). However, the browser also sends a \texttt{PRIORITY\_UPDATE} frame after sending the HTTP request, overriding the priority specified through the header. The \texttt{PRIORITY\_UPDATE} frame is sent as part of the prioritization strategy implemented by the browser, which applies its own heuristics to determine which requests should be prioritized, both internally in the browser and at the network level.
+According to our tests, Chromium (v107) allows to specify the \texttt{Priority} header in requests sent with the \texttt{fetch} API or with \texttt{XMLHttpRequest}. The header is in fact passed as is to the HTTP server and is correctly interpreted by servers supporting the extensible priorities specification (Section \ref{sec:bg/http3}). However, the browser also sends a \texttt{PRIORITY\_UPDATE} frame after sending the HTTP request, overriding the priority specified through the header. The \texttt{PRIORITY\_UPDATE} frame is sent as part of the prioritization strategy implemented by the browser, which applies its own heuristics to determine which requests should be prioritized, both internally in the browser and at the network level.
 
-The \textbf{Priority Hints} feature provides a way to control the priority that the browser gives to individual HTTP requests. The Priority Hints specification is still a W3C draft, but Chromium already implements it. The priority values defined by the specification are \texttt{high} and \texttt{low}.\footnote{\url{https://wicg.github.io/priority-hints/}} By default, \texttt{fetch} API requests have a priority of \texttt{high}, which corresponds to HTTP/3 priority \texttt{1} (where \texttt{0} means highest priority), transmitted in the \texttt{PRIORITY\_UPDATE} frame. If the \texttt{fetch} priority is set to \textbf{low}, it turns out that Chromium does not send the \texttt{PRIORITY\_UPDATE} frame at all, effectively leaving the priority value at the default value of \texttt{3}. As a consequence, in practice, setting the fetch priority to \texttt{low} enables setting a custom priority through the \texttt{Priority} header. Figure \ref{fig:chromium_fetch} shows some examples of how priorities are currently handled in Chromium.
+The \textbf{Priority Hints} feature provides a way to control the priority that the browser gives to individual HTTP requests. The Priority Hints specification is still a W3C draft, but Chromium already implements it. The priority values defined by the specification are \texttt{high} and \texttt{low}.\footnote{\url{https://wicg.github.io/priority-hints/}} By default, \texttt{fetch} API requests have a priority of \texttt{high}, which corresponds to HTTP/3 priority \texttt{1} (where \texttt{0} means highest priority), transmitted in the \texttt{PRIORITY\_UPDATE} frame. If the \texttt{fetch} priority is set to \texttt{low}, it turns out that Chromium does not send the \texttt{PRIORITY\_UPDATE} frame at all, effectively leaving the priority value at the default value of \texttt{3}. As a consequence, in practice, setting the fetch priority to \texttt{low} enables setting a custom priority through the \texttt{Priority} header. Figure \ref{fig:chromium_fetch} shows some examples of how priorities are currently handled in Chromium.
 
 \begin{figure}[h]
     \centering
@@ -44,7 +44,7 @@ await fetch('/', { priority: 'low', headers: { Priority: 'u=2' } });
     \label{fig:chromium_fetch}
 \end{figure}
 
-In summary, \textbf{in Chromium it is possible to set custom priority values} either by using the \texttt{Priority} header or the Priority Hints feature (or a combination of the two).
+In summary, \textbf{in Chromium it is possible to set custom priority values} by using the \texttt{Priority} header, the Priority Hints feature, or a combination of the two.
 
 In Firefox (v107), the behavior is different. First, Firefox does not support Priority Hints. It also appears that it does not use the \texttt{PRIORITY\_UPDATE} frame, instead adding the \texttt{Priority} header internally to outgoing requests. By default, the urgency is set to \texttt{4} for \texttt{fetch} requests. However, manually setting the \texttt{Priority} header does not seem to have any effect, as the header is always overridden by Firefox. In practice, this means that \textbf{until Firefox adds support for Priority Hints there does not seem to be a way to send a custom priority}.
 
@@ -60,7 +60,7 @@ The presence of the \texttt{Priority} header triggers a preflight request before
 \subsection{The h2o patch}
 \label{sec:eval/browsers/patch}
 
-To work around the issue of not being able to specify the HTTP/3 priority in some cases, and more importantly the CORS issue, we implemented a patch to \texttt{h2o} so that the priority can be forced with a query string parameter.\footnote{\url{https://github.com/matteocontrini/h2o/commit/bf307ef}} So, for example, a request such as \texttt{GET /segment.m4s?priority=2} would give the request an urgency value of \texttt{2}.
+To work around the issue of not being able to specify the HTTP/3 priority in some cases, and more importantly the CORS issue, we implemented a patch to \texttt{h2o} so that the priority can be forced with a query string parameter.\footnote{\url{https://github.com/matteocontrini/h2o/commit/bf307ef}} So, for example, a request like \texttt{GET /segment.m4s?priority=2} would give the request an urgency value of \texttt{2}.
 
 \section{Experiments and results with non-ABR setup}
 \label{sec:eval/non-abr}
@@ -96,7 +96,7 @@ const experiments = [
 
 As a first step, we will look at the results of the experiment named \texttt{lte\_h3}, which uses DASH over HTTP/3 with the \texttt{lte} dataset.
 
-The \textbf{buffer health plot} is shown in Figure \ref{fig:eval_nonabr_lte_h3}. In detail, the elements of the plot have the following meaning.
+The \textbf{buffer health plot} is shown in Figure \ref{fig:eval_nonabr_lte_h3}. In detail, the elements of the plot have the following meaning:
 
 \begin{itemize}
     \item The gray area in the background represents the \textbf{network bandwidth}, with the Mbps scale shown on the right side. As we can see, it varies between about 2 and 16 Mbps over the duration of the experiments, which is approximately 60 seconds with this network pattern.
@@ -177,7 +177,7 @@ As we have seen, the emulation over HTTP/3 shows that priorities are not consist
 
 Let us start from \textbf{HTTP/2}. Figure \ref{fig:eval_nonabr_lte_h2_buffer} shows the buffer health plot for an experiment execution based on HTTP/2. The rest of the settings remained the same. As we can easily see, the behavior is quite different from HTTP/3. First, the audio buffer is always larger than the video. This means that the audio segments are consistently loaded before the video buffer. The waterfall in Figure \ref{fig:eval_nonabr_lte_h2_waterfall} confirms that this is because the audio segments are loaded much faster, as we would expect, and the loading of the video segments does not delay the audio. This behavior probably derives from a different prioritization strategy, implemented by the browser or driven by the HTTP/2 server implementation.
 
-The other thing that we can observe is that there are no playback stalls, apart from the initial loading, even if the video buffer is almost empty for several seconds in the middle of the emulation. This behavior derives from the fact that the browser is capable of playing the audio data even if the video is not available, for up to 3 seconds. This particular \textbf{buffer underflow behavior} is specific to Chromium and is officially documented.\footnote{\url{https://www.chromium.org/audio-video/\#how-the-does-buffering-work}} Obviously, it can only work when audio and video data is appended to the MSE \texttt{SourceBuffer} independently; therefore, in practice it can only happen when using unmuxed video and audio tracks, as is in our case.
+The other thing that we can observe is that there are no playback stalls, apart from the initial loading, even if the video buffer is almost empty for several seconds in the middle of the emulation. This behavior derives from the fact that the browser is capable of playing the audio data even if the video is not available, for up to 3 seconds. This particular \textbf{buffer underflow behavior} is specific to Chromium and is officially documented.\footnote{\url{https://www.chromium.org/audio-video/\#how-the-does-buffering-work}} Obviously, it can only work when audio and video data is appended to the MSE \texttt{SourceBuffer} independently; therefore, in practice, it can only happen when using unmuxed video and audio tracks, as is in our case.
 
 Although Chromium's underflow behavior might not be the expected experience when streaming on-demand content, since it has the effect of not rendering the video for a few seconds, it seems instead to be particularly suitable for live streaming. In fact, in this way \textbf{short time intervals where video data is not available do not cause a stall}, and, therefore, \textbf{do not increase the latency of the live stream}. While the video is frozen due to a slow loading segment, \textbf{the audio will continue to play}.
 
@@ -298,6 +298,6 @@ Figure \ref{fig:eval_abr_hls} shows the buffer health plot of an experiment run 
     \label{fig:eval_abr_hls}
 \end{figure}
 
-Finally, we also tested the behavior of the system when the live catchup feature is enabled. The live catchup feature increases the playback rate when the measured live latency is greater than the target one, up to a specified limit. In our tests, we used a maximum speed up of 1.5x. The results (not shown here) show that the live catchup indeed reduces the average latency, however seemingly causing additional playback stalls. The other obvious disadvantage is that for many types of video content having an increased playback rate is not an ideal experience.
+Finally, we also tested the behavior of the system when the \textbf{live catchup} feature is enabled. The live catchup feature increases the playback rate when the measured live latency is greater than the target one, up to a specified limit. In our tests, we used a maximum speed up of 1.5x. The results (not shown here) show that the live catchup indeed reduces the average latency, however seemingly causing additional playback stalls. The other obvious disadvantage is that for many types of video content having an increased playback rate is not an ideal experience.
 
 
